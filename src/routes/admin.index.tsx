@@ -1,52 +1,77 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { motion } from "framer-motion";
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { ArrowDownRight, ArrowUpRight, DollarSign, ShoppingBag, TrendingUp, Users } from "lucide-react";
-import { useStore, formatPrice } from "@/lib/store";
+import { useQuery } from "@tanstack/react-query";
+import { formatPrice } from "@/lib/store";
 import { CATEGORY_LABELS } from "@/lib/types";
+import { fetchDishes, fetchTables } from "@/lib/api";
+import { useOrders } from "@/hooks/useRealtimeOrders";
 
 export const Route = createFileRoute("/admin/")({
   component: Dashboard,
 });
 
-const HOURLY = Array.from({ length: 12 }, (_, i) => ({
-  hour: `${i + 12}:00`,
-  revenue: Math.round(400 + Math.sin(i / 2) * 220 + Math.random() * 180),
-  orders: Math.round(8 + Math.sin(i / 2) * 5 + Math.random() * 4),
-}));
-
-const WEEKLY = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d, i) => ({
-  day: d,
-  revenue: Math.round(2200 + i * 240 + Math.random() * 800),
-}));
-
 function Dashboard() {
-  const orders = useStore((s) => s.orders);
-  const dishes = useStore((s) => s.dishes);
-  const tables = useStore((s) => s.tables);
+  const { data: orders = [] } = useOrders();
+  const { data: dishes = [] } = useQuery({ queryKey: ["dishes"], queryFn: fetchDishes });
+  const { data: tables = [] } = useQuery({ queryKey: ["tables"], queryFn: fetchTables });
 
   const stats = useMemo(() => {
     const completed = orders.filter((o) => o.status !== "cancelled");
-    const revenue = completed.reduce((s, o) => s + o.total, 0);
+    const revenue = completed.reduce((s, o) => s + Number(o.total), 0);
     const avg = completed.length ? revenue / completed.length : 0;
     return {
       revenue,
       avg,
       orders: completed.length,
-      activeTables: new Set(orders.filter((o) => o.status !== "delivered" && o.status !== "cancelled").map((o) => o.table)).size,
+      activeTables: new Set(orders.filter((o) => o.status === "new" || o.status === "preparing" || o.status === "ready").map((o) => o.table_id)).size,
     };
+  }, [orders]);
+
+  // Hourly revenue for today
+  const hourly = useMemo(() => {
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const buckets: Record<number, { hour: string; revenue: number; orders: number }> = {};
+    for (let h = 11; h <= 23; h++) buckets[h] = { hour: `${h}:00`, revenue: 0, orders: 0 };
+    for (const o of orders) {
+      if (o.status === "cancelled") continue;
+      const d = new Date(o.created_at!);
+      if (d < now) continue;
+      const h = d.getHours();
+      if (!buckets[h]) buckets[h] = { hour: `${h}:00`, revenue: 0, orders: 0 };
+      buckets[h].revenue += Number(o.total);
+      buckets[h].orders += 1;
+    }
+    return Object.values(buckets);
+  }, [orders]);
+
+  // Last 7 days
+  const weekly = useMemo(() => {
+    const days: Array<{ day: string; revenue: number }> = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - i);
+      const next = new Date(d); next.setDate(d.getDate() + 1);
+      const rev = orders.reduce((s, o) => {
+        if (o.status === "cancelled") return s;
+        const od = new Date(o.created_at!);
+        return od >= d && od < next ? s + Number(o.total) : s;
+      }, 0);
+      days.push({ day: d.toLocaleDateString("en", { weekday: "short" }), revenue: rev });
+    }
+    return days;
   }, [orders]);
 
   const topDishes = useMemo(() => {
     const map = new Map<string, { name: string; qty: number; revenue: number }>();
-    for (const o of orders) for (const it of o.items) {
-      const cur = map.get(it.dish.id) ?? { name: it.dish.name, qty: 0, revenue: 0 };
-      cur.qty += it.qty; cur.revenue += it.qty * it.dish.price;
-      map.set(it.dish.id, cur);
+    for (const o of orders) for (const it of o.order_items) {
+      const key = it.dish_id ?? it.name;
+      const cur = map.get(key) ?? { name: it.name, qty: 0, revenue: 0 };
+      cur.qty += it.qty; cur.revenue += it.qty * Number(it.price);
+      map.set(key, cur);
     }
     return [...map.values()].sort((a, b) => b.qty - a.qty).slice(0, 5);
   }, [orders]);
@@ -67,16 +92,16 @@ function Dashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KPI icon={DollarSign} label="Revenue today" value={formatPrice(stats.revenue + 12450)} delta="+18.4%" up />
-        <KPI icon={ShoppingBag} label="Orders" value={`${stats.orders + 42}`} delta="+9.1%" up />
-        <KPI icon={TrendingUp} label="Avg ticket" value={formatPrice(stats.avg || 184)} delta="+4.2%" up />
-        <KPI icon={Users} label="Active tables" value={`${stats.activeTables}/${tables.length}`} delta="-1" />
+        <KPI icon={DollarSign} label="Total revenue" value={formatPrice(stats.revenue)} delta="live" up />
+        <KPI icon={ShoppingBag} label="Orders" value={`${stats.orders}`} delta="live" up />
+        <KPI icon={TrendingUp} label="Avg ticket" value={formatPrice(stats.avg || 0)} delta="live" up />
+        <KPI icon={Users} label="Active tables" value={`${stats.activeTables}/${tables.length}`} delta="" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Panel title="Revenue this evening" subtitle="Hourly breakdown" className="lg:col-span-2">
+        <Panel title="Revenue today" subtitle="Hourly breakdown" className="lg:col-span-2">
           <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={HOURLY}>
+            <AreaChart data={hourly}>
               <defs>
                 <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="oklch(0.82 0.13 85)" stopOpacity={0.5} />
@@ -87,7 +112,7 @@ function Dashboard() {
               <XAxis dataKey="hour" stroke="oklch(0.65 0.012 80)" fontSize={11} tickLine={false} axisLine={false} />
               <YAxis stroke="oklch(0.65 0.012 80)" fontSize={11} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: "oklch(0.82 0.13 85 / 0.4)" }} />
-              <Area type="monotone" dataKey="revenue" stroke="oklch(0.82 0.13 85)" strokeWidth={2} fill="url(#rev)" />
+              <Area type="monotone" dataKey="revenue" stroke="oklch(0.82 0.13 85)" strokeWidth={2} fill="url(#rev)" isAnimationActive={false} />
             </AreaChart>
           </ResponsiveContainer>
         </Panel>
@@ -95,7 +120,7 @@ function Dashboard() {
         <Panel title="Menu mix" subtitle="By category">
           <ResponsiveContainer width="100%" height={280}>
             <PieChart>
-              <Pie data={categoryData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={4}>
+              <Pie data={categoryData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={4} isAnimationActive={false}>
                 {categoryData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke="none" />)}
               </Pie>
               <Tooltip contentStyle={tooltipStyle} />
@@ -107,17 +132,17 @@ function Dashboard() {
       <div className="grid gap-4 lg:grid-cols-3">
         <Panel title="Weekly revenue" subtitle="Last 7 days" className="lg:col-span-2">
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={WEEKLY}>
+            <BarChart data={weekly}>
               <CartesianGrid stroke="oklch(1 0 0 / 0.05)" vertical={false} />
               <XAxis dataKey="day" stroke="oklch(0.65 0.012 80)" fontSize={11} tickLine={false} axisLine={false} />
               <YAxis stroke="oklch(0.65 0.012 80)" fontSize={11} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "oklch(0.82 0.13 85 / 0.05)" }} />
-              <Bar dataKey="revenue" fill="oklch(0.82 0.13 85)" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="revenue" fill="oklch(0.82 0.13 85)" radius={[8, 8, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </Panel>
 
-        <Panel title="Top selling tonight" subtitle={`${topDishes.length} dishes`}>
+        <Panel title="Top selling" subtitle={`${topDishes.length} dishes`}>
           <ul className="space-y-3">
             {topDishes.length === 0 ? (
               <li className="text-sm text-muted-foreground">No orders yet.</li>
@@ -149,17 +174,18 @@ const tooltipStyle: React.CSSProperties = {
 
 function KPI({ icon: Icon, label, value, delta, up }: any) {
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl glass p-5">
+    <div className="rounded-2xl glass p-5">
       <div className="flex items-center justify-between">
         <span className="grid h-10 w-10 place-items-center rounded-xl bg-gold/10 text-gold"><Icon className="h-5 w-5" /></span>
-        <span className={`inline-flex items-center gap-1 text-xs ${up ? "text-emerald-300" : "text-rose-300"}`}>
-          {up ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />} {delta}
-        </span>
+        {delta && (
+          <span className={`inline-flex items-center gap-1 text-xs ${up ? "text-emerald-300" : "text-rose-300"}`}>
+            {up ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />} {delta}
+          </span>
+        )}
       </div>
       <div className="mt-5 font-display text-3xl">{value}</div>
       <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{label}</div>
-    </motion.div>
+    </div>
   );
 }
 

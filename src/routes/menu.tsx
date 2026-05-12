@@ -1,18 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ShoppingBag } from "lucide-react";
+import { ShoppingBag, QrCode } from "lucide-react";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
 import { CATEGORY_LABELS, type Category, type Dish } from "@/lib/types";
-import { calcTotals, formatPrice, useStore } from "@/lib/store";
+import { calcTotals, formatPrice, useCart } from "@/lib/store";
+import { fetchDishes, fetchTableByToken } from "@/lib/api";
 import { DishCard } from "@/components/DishCard";
 import { OrderModal } from "@/components/OrderModal";
 import { CartDrawer } from "@/components/CartDrawer";
 import { Logo } from "@/components/Logo";
 
 const searchSchema = z.object({
-  table: fallback(z.string(), "1").default("1"),
+  t: fallback(z.string().optional(), undefined),
 });
 
 export const Route = createFileRoute("/menu")({
@@ -20,7 +22,7 @@ export const Route = createFileRoute("/menu")({
   head: () => ({
     meta: [
       { title: "Menu — AURALIS" },
-      { name: "description", content: "Explore tonight's menu and order directly from your table." },
+      { name: "description", content: "Order directly from your table." },
     ],
   }),
   component: MenuPage,
@@ -35,105 +37,86 @@ const TABS: Array<{ key: "all" | Category; label: string }> = [
   { key: "specials", label: CATEGORY_LABELS.specials },
 ];
 
-function shuffle<T>(arr: T[], seed: number): T[] {
-  const a = [...arr];
-  let s = seed;
-  for (let i = a.length - 1; i > 0; i--) {
-    s = (s * 9301 + 49297) % 233280;
-    const j = Math.floor((s / 233280) * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
 function MenuPage() {
-  const { table } = Route.useSearch();
-  const dishes = useStore((s) => s.dishes);
-  const cart = useStore((s) => s.cart);
-  const setTable = useStore((s) => s.setTable);
+  const { t } = Route.useSearch();
+  const cart = useCart((s) => s.cart);
+
+  const tableQuery = useQuery({
+    queryKey: ["table", t],
+    queryFn: () => fetchTableByToken(t!),
+    enabled: !!t,
+  });
+
+  const dishesQuery = useQuery({
+    queryKey: ["dishes"],
+    queryFn: fetchDishes,
+    enabled: !!tableQuery.data,
+  });
 
   const [active, setActive] = useState<"all" | Category>("all");
   const [selected, setSelected] = useState<Dish | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [welcome, setWelcome] = useState(true);
 
-  useEffect(() => { setTable(table); }, [table, setTable]);
   useEffect(() => {
-    const t = setTimeout(() => setWelcome(false), 2200);
-    return () => clearTimeout(t);
+    const id = setTimeout(() => setWelcome(false), 1800);
+    return () => clearTimeout(id);
   }, []);
 
-  const seed = useMemo(() => Math.floor(Date.now() / (1000 * 60 * 5)), []);
+  // store token in sessionStorage for resilience
+  useEffect(() => { if (t) sessionStorage.setItem("auralis-token", t); }, [t]);
+
+  const table = tableQuery.data;
   const filtered = useMemo(() => {
-    const list = active === "all" ? dishes : dishes.filter((d) => d.category === active);
-    return shuffle(list, seed);
-  }, [dishes, active, seed]);
+    const list = dishesQuery.data ?? [];
+    const visible = list.filter((d) => d.available && (table?.is_vip || !d.isVipOnly));
+    return active === "all" ? visible : visible.filter((d) => d.category === active);
+  }, [dishesQuery.data, active, table]);
 
   const totalQty = cart.reduce((s, i) => s + i.qty, 0);
   const totals = calcTotals(cart);
 
+  // ---- Gating screens ----
+  if (!t) return <ScanRequired />;
+  if (tableQuery.isLoading) return <Loading />;
+  if (!table || !table.active) return <ScanRequired invalid />;
+
   return (
     <div className="relative min-h-screen pb-32">
-      {/* Welcome flash */}
       <motion.div
         initial={{ opacity: 1 }}
         animate={{ opacity: welcome ? 1 : 0, pointerEvents: welcome ? "auto" : "none" }}
-        transition={{ duration: 0.6 }}
+        transition={{ duration: 0.5 }}
         className="fixed inset-0 z-[60] flex items-center justify-center bg-background"
       >
         <div className="text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            className="text-[11px] uppercase tracking-[0.4em] text-gold"
-          >Welcome</motion.div>
-          <motion.h1
-            initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-            className="mt-3 font-display text-5xl gold-text"
-          >Table {table}</motion.h1>
-          <motion.div
-            initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.3, duration: 1 }}
-            className="mx-auto mt-6 h-px w-32 origin-left bg-gradient-to-r from-transparent via-gold to-transparent"
-          />
+          <div className="text-[11px] uppercase tracking-[0.4em] text-gold">Welcome</div>
+          <h1 className="mt-3 font-display text-5xl gold-text">{table.name}</h1>
+          {table.is_vip && <div className="mt-2 text-[10px] uppercase tracking-[0.4em] text-gold-soft">VIP Service</div>}
+          <div className="mx-auto mt-6 h-px w-32 bg-gradient-to-r from-transparent via-gold to-transparent" />
         </div>
       </motion.div>
 
-      {/* Header */}
       <header className="sticky top-0 z-30 border-b hairline glass-strong">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:px-6">
-          <div className="flex items-center gap-4">
-            <Link to="/" className="grid h-9 w-9 place-items-center rounded-full bg-secondary hover:bg-card">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-            <Logo />
-          </div>
-          <div className="hidden sm:block text-right">
+          <Logo />
+          <div className="text-right">
             <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Now serving</div>
-            <div className="font-display gold-text">Table {table}</div>
+            <div className="font-display gold-text">{table.name}</div>
           </div>
         </div>
-
-        {/* Sticky tabs */}
         <nav className="border-t hairline">
           <div className="mx-auto max-w-7xl">
             <div className="scrollbar-hide flex gap-1 overflow-x-auto px-3 py-3 md:justify-center md:px-6">
-              {TABS.map((t) => {
-                const isActive = active === t.key;
+              {TABS.map((tab) => {
+                const isActive = active === tab.key;
                 return (
                   <button
-                    key={t.key}
-                    onClick={() => setActive(t.key)}
-                    className="relative whitespace-nowrap rounded-full px-4 py-2 text-xs uppercase tracking-[0.2em] transition-colors"
+                    key={tab.key}
+                    onClick={() => setActive(tab.key)}
+                    className={`relative whitespace-nowrap rounded-full px-4 py-2 text-xs uppercase tracking-[0.2em] transition-colors ${isActive ? "bg-gold text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
                   >
-                    {isActive && (
-                      <motion.span
-                        layoutId="tab"
-                        transition={{ type: "spring", stiffness: 400, damping: 32 }}
-                        className="absolute inset-0 rounded-full bg-gold"
-                      />
-                    )}
-                    <span className={`relative ${isActive ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                      {t.label}
-                    </span>
+                    {tab.label}
                   </button>
                 );
               })}
@@ -142,32 +125,30 @@ function MenuPage() {
         </nav>
       </header>
 
-      {/* Menu hero */}
       <section className="px-4 pt-10 pb-6 md:px-6 md:pt-16">
         <div className="mx-auto max-w-7xl text-center">
           <div className="text-[11px] uppercase tracking-[0.3em] text-gold">À la carte</div>
           <h2 className="mt-3 font-display text-4xl md:text-6xl text-balance">Tonight's Menu</h2>
           <p className="mx-auto mt-4 max-w-xl text-sm text-muted-foreground">
-            Curated daily by our chef. Tap any dish to add it to your order — your table is already with us.
+            Curated daily by our chef. Tap any dish to add it to your order.
           </p>
         </div>
       </section>
 
-      {/* Grid */}
       <section className="px-4 md:px-6">
-        <div className="mx-auto grid max-w-7xl gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.map((d, i) => (
-            <DishCard key={d.id} dish={d} index={i} onSelect={setSelected} />
-          ))}
-        </div>
+        {dishesQuery.isLoading ? (
+          <div className="py-24 text-center text-sm text-muted-foreground">Loading menu…</div>
+        ) : (
+          <div className="mx-auto grid max-w-7xl gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filtered.map((d, i) => (
+              <DishCard key={d.id} dish={d} index={i} onSelect={setSelected} />
+            ))}
+          </div>
+        )}
       </section>
 
-      {/* Floating cart button */}
       {totalQty > 0 && (
-        <motion.button
-          initial={{ y: 80, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 280, damping: 22 }}
+        <button
           onClick={() => setCartOpen(true)}
           className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 sm:bottom-8"
         >
@@ -177,11 +158,42 @@ function MenuPage() {
             <span className="h-4 w-px bg-primary-foreground/30" />
             <span className="font-display text-base">{formatPrice(totals.total)}</span>
           </span>
-        </motion.button>
+        </button>
       )}
 
       <OrderModal dish={selected} onClose={() => setSelected(null)} />
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} table={table} />
+    </div>
+  );
+}
+
+function Loading() {
+  return (
+    <div className="grid min-h-screen place-items-center">
+      <div className="font-display text-2xl gold-text">AURALIS</div>
+    </div>
+  );
+}
+
+function ScanRequired({ invalid }: { invalid?: boolean }) {
+  return (
+    <div className="grid min-h-screen place-items-center px-4 text-center">
+      <div className="max-w-sm">
+        <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-gold/15">
+          <QrCode className="h-8 w-8 text-gold" />
+        </div>
+        <h1 className="mt-6 font-display text-3xl gold-text">
+          {invalid ? "Invalid table code" : "Scan your table"}
+        </h1>
+        <p className="mt-3 text-sm text-muted-foreground">
+          {invalid
+            ? "This QR is no longer active. Please ask our staff for assistance."
+            : "Please scan the QR code on your table to view the menu and order."}
+        </p>
+        <Link to="/" className="mt-8 inline-flex rounded-full border hairline px-6 py-3 text-xs uppercase tracking-[0.25em] text-muted-foreground hover:text-foreground">
+          Return to AURALIS
+        </Link>
+      </div>
     </div>
   );
 }
