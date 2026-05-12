@@ -81,7 +81,7 @@ export async function deleteReservation(id: string) {
 }
 
 // ----- ORDERS -----
-export async function setOrderStatus(id: string, status: string) {
+export async function setOrderStatus(id: string, status: import("./types").OrderStatus) {
   const { error } = await supabase.from("orders").update({ status }).eq("id", id);
   if (error) throw error;
 }
