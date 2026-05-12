@@ -1,15 +1,20 @@
+import type { Database } from "@/integrations/supabase/types";
+
 export type Category = "starters" | "mains" | "desserts" | "drinks" | "specials";
 
 export type Badge =
-  | "vip"
-  | "exclusive"
-  | "bestseller"
-  | "discount"
-  | "new"
-  | "chef"
-  | "spicy"
-  | "limited";
+  | "vip" | "exclusive" | "bestseller" | "discount"
+  | "new" | "chef" | "spicy" | "limited";
 
+export type DishRow = Database["public"]["Tables"]["dishes"]["Row"];
+export type TableRow = Database["public"]["Tables"]["tables"]["Row"];
+export type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
+export type OrderItemRow = Database["public"]["Tables"]["order_items"]["Row"];
+export type ReservationRow = Database["public"]["Tables"]["reservations"]["Row"];
+
+export type OrderStatus = "new" | "preparing" | "ready" | "delivered" | "cancelled";
+
+/** Normalized Dish for UI use (camelCase) */
 export interface Dish {
   id: string;
   name: string;
@@ -17,10 +22,27 @@ export interface Dish {
   price: number;
   category: Category;
   image: string;
-  calories?: number;
-  prepTime?: number;
+  calories: number | null;
+  prepTime: number | null;
   badges: Badge[];
   available: boolean;
+  isVipOnly: boolean;
+}
+
+export function dishFromRow(r: DishRow): Dish {
+  return {
+    id: r.id,
+    name: r.name,
+    description: r.description ?? "",
+    price: Number(r.price),
+    category: r.category as Category,
+    image: r.image ?? "",
+    calories: r.calories,
+    prepTime: r.prep_time,
+    badges: (r.badges ?? []) as Badge[],
+    available: r.available,
+    isVipOnly: r.is_vip_only,
+  };
 }
 
 export interface CartItem {
@@ -29,36 +51,8 @@ export interface CartItem {
   notes?: string;
 }
 
-export type OrderStatus = "new" | "preparing" | "ready" | "delivered" | "cancelled";
-
-export interface Order {
-  id: string;
-  table: string;
-  items: CartItem[];
-  subtotal: number;
-  service: number;
-  tax: number;
-  total: number;
-  status: OrderStatus;
-  createdAt: number;
-}
-
-export interface Reservation {
-  id: string;
-  name: string;
-  phone: string;
-  guests: number;
-  date: string;
-  time: string;
-  notes?: string;
-  createdAt: number;
-}
-
-export interface Table {
-  id: string;
-  name: string;
-  seats: number;
-  active: boolean;
+export interface OrderWithItems extends OrderRow {
+  order_items: OrderItemRow[];
 }
 
 export const CATEGORY_LABELS: Record<Category, string> = {

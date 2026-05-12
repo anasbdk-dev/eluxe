@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Minus, Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Dish } from "@/lib/types";
-import { formatPrice, useStore } from "@/lib/store";
+import { formatPrice, useCart } from "@/lib/store";
 import { BadgePill } from "./BadgePill";
 import { toast } from "sonner";
 
@@ -12,7 +12,7 @@ interface Props {
 }
 
 export function OrderModal({ dish, onClose }: Props) {
-  const addToCart = useStore((s) => s.addToCart);
+  const addToCart = useCart((s) => s.addToCart);
   const [qty, setQty] = useState(1);
   const [notes, setNotes] = useState("");
 

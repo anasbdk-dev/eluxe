@@ -1,28 +1,51 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Minus, Plus, ShoppingBag, Trash2, X, Sparkles } from "lucide-react";
 import { useState } from "react";
-import { calcTotals, formatPrice, useStore } from "@/lib/store";
+import { calcTotals, formatPrice, useCart } from "@/lib/store";
+import { placeOrder } from "@/lib/api";
+import type { TableRow } from "@/lib/types";
 import { toast } from "sonner";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  table: string;
+  table: TableRow;
 }
 
 export function CartDrawer({ open, onClose, table }: Props) {
-  const cart = useStore((s) => s.cart);
-  const updateQty = useStore((s) => s.updateQty);
-  const removeFromCart = useStore((s) => s.removeFromCart);
-  const placeOrder = useStore((s) => s.placeOrder);
+  const cart = useCart((s) => s.cart);
+  const updateQty = useCart((s) => s.updateQty);
+  const removeFromCart = useCart((s) => s.removeFromCart);
+  const clearCart = useCart((s) => s.clearCart);
   const totals = calcTotals(cart);
   const [confirmed, setConfirmed] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const submit = () => {
+  const submit = async () => {
     if (!cart.length) return;
-    const o = placeOrder(table);
-    setConfirmed(o.id);
-    toast.success("Order sent to kitchen");
+    setBusy(true);
+    try {
+      const order = await placeOrder({
+        table_id: table.id,
+        table_name: table.name,
+        items: cart.map((c) => ({
+          dish_id: c.dish.id,
+          name: c.dish.name,
+          price: c.dish.price,
+          qty: c.qty,
+          image: c.dish.image,
+          notes: c.notes,
+        })),
+        ...totals,
+      });
+      clearCart();
+      setConfirmed(order.id);
+      toast.success("Order sent to kitchen");
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not place order");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -34,17 +57,15 @@ export function CartDrawer({ open, onClose, table }: Props) {
           onClick={() => { onClose(); setConfirmed(null); }}
         >
           <motion.aside
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             onClick={(e) => e.stopPropagation()}
             className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col glass-strong"
           >
             <header className="flex items-center justify-between border-b hairline p-5">
               <div>
                 <div className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Your Order</div>
-                <div className="font-display text-xl">Table {table}</div>
+                <div className="font-display text-xl">{table.name}</div>
               </div>
               <button onClick={() => { onClose(); setConfirmed(null); }} className="grid h-9 w-9 place-items-center rounded-full bg-secondary hover:bg-card">
                 <X className="h-4 w-4" />
@@ -53,18 +74,13 @@ export function CartDrawer({ open, onClose, table }: Props) {
 
             {confirmed ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-6 p-8 text-center">
-                <motion.div
-                  initial={{ scale: 0, rotate: -90 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ type: "spring", stiffness: 180, damping: 14 }}
-                  className="grid h-24 w-24 place-items-center rounded-full bg-gold/15 gold-glow"
-                >
+                <div className="grid h-24 w-24 place-items-center rounded-full bg-gold/15 gold-glow">
                   <Sparkles className="h-10 w-10 text-gold" />
-                </motion.div>
+                </div>
                 <div className="space-y-2">
                   <h3 className="font-display text-3xl gold-text">Bon appétit</h3>
                   <p className="text-sm text-muted-foreground text-balance">
-                    Your order has been sent to the kitchen successfully. Estimated preparation: 20–25 minutes.
+                    Your order has been sent to the kitchen. Estimated preparation: 20–25 minutes.
                   </p>
                 </div>
                 <button
@@ -85,14 +101,7 @@ export function CartDrawer({ open, onClose, table }: Props) {
                   ) : (
                     <ul className="space-y-3">
                       {cart.map((item) => (
-                        <motion.li
-                          key={item.dish.id}
-                          layout
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, x: 30 }}
-                          className="flex gap-3 rounded-2xl glass p-3"
-                        >
+                        <li key={item.dish.id} className="flex gap-3 rounded-2xl glass p-3">
                           <img src={item.dish.image} alt="" className="h-20 w-20 rounded-xl object-cover" />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2">
@@ -115,7 +124,7 @@ export function CartDrawer({ open, onClose, table }: Props) {
                               <span className="font-display gold-text">{formatPrice(item.dish.price * item.qty)}</span>
                             </div>
                           </div>
-                        </motion.li>
+                        </li>
                       ))}
                     </ul>
                   )}
@@ -132,9 +141,10 @@ export function CartDrawer({ open, onClose, table }: Props) {
                     </dl>
                     <button
                       onClick={submit}
-                      className="w-full rounded-xl bg-gold py-4 text-sm font-semibold uppercase tracking-[0.2em] text-primary-foreground transition-all hover:bg-gold-soft hover:shadow-[0_12px_40px_-10px_oklch(0.82_0.13_85_/_0.6)]"
+                      disabled={busy}
+                      className="w-full rounded-xl bg-gold py-4 text-sm font-semibold uppercase tracking-[0.2em] text-primary-foreground transition-all hover:bg-gold-soft disabled:opacity-60"
                     >
-                      Confirm Order
+                      {busy ? "Sending…" : "Confirm Order"}
                     </button>
                   </div>
                 )}
