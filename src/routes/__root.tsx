@@ -10,6 +10,7 @@ import {
 import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
+import { I18nProvider } from "@/lib/i18n";
 
 function NotFoundComponent() {
   return (
@@ -92,19 +93,21 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
-      <Toaster
-        position="top-center"
-        theme="dark"
-        toastOptions={{
-          style: {
-            background: "oklch(0.17 0.006 60 / 0.9)",
-            border: "1px solid oklch(0.82 0.13 85 / 0.25)",
-            color: "oklch(0.95 0.012 80)",
-            backdropFilter: "blur(20px)",
-          },
-        }}
-      />
+      <I18nProvider>
+        <Outlet />
+        <Toaster
+          position="top-center"
+          theme="dark"
+          toastOptions={{
+            style: {
+              background: "oklch(0.17 0.006 60 / 0.9)",
+              border: "1px solid oklch(0.82 0.13 85 / 0.25)",
+              color: "oklch(0.95 0.012 80)",
+              backdropFilter: "blur(20px)",
+            },
+          }}
+        />
+      </I18nProvider>
     </QueryClientProvider>
   );
 }
