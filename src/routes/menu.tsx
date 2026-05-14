@@ -5,13 +5,14 @@ import { ShoppingBag, QrCode } from "lucide-react";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
-import { CATEGORY_LABELS, type Category, type Dish } from "@/lib/types";
+import type { Category, Dish } from "@/lib/types";
 import { calcTotals, formatPrice, useCart } from "@/lib/store";
 import { fetchDishes, fetchTableByToken } from "@/lib/api";
 import { DishCard } from "@/components/DishCard";
 import { OrderModal } from "@/components/OrderModal";
 import { CartDrawer } from "@/components/CartDrawer";
 import { Logo } from "@/components/Logo";
+import { LanguageToggle, useT } from "@/lib/i18n";
 
 const searchSchema = z.object({
   t: fallback(z.string().optional(), undefined),
@@ -28,23 +29,24 @@ export const Route = createFileRoute("/menu")({
   component: MenuPage,
 });
 
-const TABS: Array<{ key: "all" | Category; label: string }> = [
-  { key: "all", label: "All" },
-  { key: "starters", label: CATEGORY_LABELS.starters },
-  { key: "mains", label: CATEGORY_LABELS.mains },
-  { key: "desserts", label: CATEGORY_LABELS.desserts },
-  { key: "drinks", label: CATEGORY_LABELS.drinks },
-  { key: "specials", label: CATEGORY_LABELS.specials },
-];
-
 function MenuPage() {
-  const { t } = Route.useSearch();
+  const { t: token } = Route.useSearch();
   const cart = useCart((s) => s.cart);
+  const { t } = useT();
+
+  const TABS: Array<{ key: "all" | Category; label: string }> = [
+    { key: "all", label: t("common.all") },
+    { key: "starters", label: t("cat.starters") },
+    { key: "mains", label: t("cat.mains") },
+    { key: "desserts", label: t("cat.desserts") },
+    { key: "drinks", label: t("cat.drinks") },
+    { key: "specials", label: t("cat.specials") },
+  ];
 
   const tableQuery = useQuery({
-    queryKey: ["table", t],
-    queryFn: () => fetchTableByToken(t!),
-    enabled: !!t,
+    queryKey: ["table", token],
+    queryFn: () => fetchTableByToken(token!),
+    enabled: !!token,
   });
 
   const dishesQuery = useQuery({
@@ -62,11 +64,10 @@ function MenuPage() {
     return () => clearTimeout(id);
   }, []);
 
-  // store token in sessionStorage for resilience
-  useEffect(() => { if (t) sessionStorage.setItem("auralis-token", t); }, [t]);
+  useEffect(() => { if (token) sessionStorage.setItem("auralis-token", token); }, [token]);
 
   const table = tableQuery.data;
-  const previewMode = !t;
+  const previewMode = !token;
   const filtered = useMemo(() => {
     const list = dishesQuery.data ?? [];
     const visible = list.filter((d) => d.available && (table?.is_vip || !d.isVipOnly));
@@ -76,9 +77,8 @@ function MenuPage() {
   const totalQty = cart.reduce((s, i) => s + i.qty, 0);
   const totals = calcTotals(cart);
 
-  // ---- Gating screens ----
-  if (t && tableQuery.isLoading) return <Loading />;
-  if (t && (!table || !table.active)) return <ScanRequired invalid />;
+  if (token && tableQuery.isLoading) return <Loading />;
+  if (token && (!table || !table.active)) return <ScanRequired invalid />;
 
   return (
     <div className="relative min-h-screen pb-32">
@@ -90,9 +90,9 @@ function MenuPage() {
           className="fixed inset-0 z-[60] flex items-center justify-center bg-background"
         >
           <div className="text-center">
-            <div className="text-[11px] uppercase tracking-[0.4em] text-gold">Welcome</div>
+            <div className="text-[11px] uppercase tracking-[0.4em] text-gold">{t("menu.welcome")}</div>
             <h1 className="mt-3 font-display text-5xl gold-text">{table.name}</h1>
-            {table.is_vip && <div className="mt-2 text-[10px] uppercase tracking-[0.4em] text-gold-soft">VIP Service</div>}
+            {table.is_vip && <div className="mt-2 text-[10px] uppercase tracking-[0.4em] text-gold-soft">{t("menu.vipService")}</div>}
             <div className="mx-auto mt-6 h-px w-32 bg-gradient-to-r from-transparent via-gold to-transparent" />
           </div>
         </motion.div>
@@ -101,9 +101,12 @@ function MenuPage() {
       <header className="sticky top-0 z-30 border-b hairline glass-strong">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:px-6">
           <Logo />
-          <div className="text-right">
-            <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">{previewMode ? "Preview" : "Now serving"}</div>
-            <div className="font-display gold-text">{previewMode ? "Browse Mode" : table?.name}</div>
+          <div className="flex items-center gap-3">
+            <LanguageToggle />
+            <div className="text-end">
+              <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">{previewMode ? t("common.preview") : t("menu.nowServing")}</div>
+              <div className="font-display gold-text">{previewMode ? t("common.browseMode") : table?.name}</div>
+            </div>
           </div>
         </div>
         <nav className="border-t hairline">
@@ -128,17 +131,17 @@ function MenuPage() {
 
       <section className="px-4 pt-10 pb-6 md:px-6 md:pt-16">
         <div className="mx-auto max-w-7xl text-center">
-          <div className="text-[11px] uppercase tracking-[0.3em] text-gold">À la carte</div>
-          <h2 className="mt-3 font-display text-4xl md:text-6xl text-balance">Tonight's Menu</h2>
+          <div className="text-[11px] uppercase tracking-[0.3em] text-gold">{t("menu.alaCarte")}</div>
+          <h2 className="mt-3 font-display text-4xl md:text-6xl text-balance">{t("menu.tonightsMenu")}</h2>
           <p className="mx-auto mt-4 max-w-xl text-sm text-muted-foreground">
-            Curated daily by our chef. Tap any dish to add it to your order.
+            {t("menu.tonightsBody")}
           </p>
         </div>
       </section>
 
       <section className="px-4 md:px-6">
         {dishesQuery.isLoading ? (
-          <div className="py-24 text-center text-sm text-muted-foreground">Loading menu…</div>
+          <div className="py-24 text-center text-sm text-muted-foreground">{t("menu.loadingMenu")}</div>
         ) : (
           <div className="mx-auto grid max-w-7xl gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((d, i) => (
@@ -155,7 +158,7 @@ function MenuPage() {
         >
           <span className="flex items-center gap-3 rounded-full bg-gold px-6 py-4 font-medium text-primary-foreground shadow-[0_20px_60px_-15px_oklch(0.82_0.13_85_/_0.7)] transition-transform hover:scale-105">
             <ShoppingBag className="h-4 w-4" />
-            <span className="text-sm">{totalQty} Item{totalQty > 1 ? "s" : ""}</span>
+            <span className="text-sm">{totalQty} {totalQty > 1 ? t("menu.items") : t("menu.item")}</span>
             <span className="h-4 w-px bg-primary-foreground/30" />
             <span className="font-display text-base">{formatPrice(totals.total)}</span>
           </span>
@@ -177,6 +180,7 @@ function Loading() {
 }
 
 function ScanRequired({ invalid }: { invalid?: boolean }) {
+  const { t } = useT();
   return (
     <div className="grid min-h-screen place-items-center px-4 text-center">
       <div className="max-w-sm">
@@ -184,15 +188,13 @@ function ScanRequired({ invalid }: { invalid?: boolean }) {
           <QrCode className="h-8 w-8 text-gold" />
         </div>
         <h1 className="mt-6 font-display text-3xl gold-text">
-          {invalid ? "Invalid table code" : "Scan your table"}
+          {invalid ? t("menu.invalidCode") : t("menu.scanTable")}
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          {invalid
-            ? "This QR is no longer active. Please ask our staff for assistance."
-            : "Please scan the QR code on your table to view the menu and order."}
+          {invalid ? t("menu.invalidBody") : t("menu.scanBody")}
         </p>
         <Link to="/" className="mt-8 inline-flex rounded-full border hairline px-6 py-3 text-xs uppercase tracking-[0.25em] text-muted-foreground hover:text-foreground">
-          Return to AURALIS
+          {t("menu.returnAuralis")}
         </Link>
       </div>
     </div>

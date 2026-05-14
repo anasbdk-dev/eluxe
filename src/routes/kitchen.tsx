@@ -8,6 +8,7 @@ import type { OrderStatus } from "@/lib/types";
 import { Logo } from "@/components/Logo";
 import { AuthGuard } from "@/components/AuthGuard";
 import { useAuth } from "@/hooks/useAuth";
+import { LanguageToggle, useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/kitchen")({
   head: () => ({ meta: [{ title: "Kitchen Display — AURALIS" }] }),
@@ -34,21 +35,22 @@ const STATUS_STYLE: Record<OrderStatus, string> = {
   cancelled: "border-destructive/40 bg-destructive/10 text-destructive",
 };
 
-const FILTERS: Array<{ key: "active" | OrderStatus | "all"; label: string }> = [
-  { key: "active", label: "Active" },
-  { key: "new", label: "New" },
-  { key: "preparing", label: "Preparing" },
-  { key: "ready", label: "Ready" },
-  { key: "delivered", label: "Delivered" },
-  { key: "all", label: "All" },
-];
-
 function Kitchen() {
   const { data: orders = [] } = useOrders();
   const [, setTick] = useState(0);
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]["key"]>("active");
+  const [filter, setFilter] = useState<"active" | OrderStatus | "all">("active");
   const { signOut } = useAuth();
+  const { t } = useT();
   const navigate = useNavigate();
+
+  const FILTERS: Array<{ key: "active" | OrderStatus | "all"; label: string }> = [
+    { key: "active", label: t("kitchen.filters.active") },
+    { key: "new", label: t("status.new") },
+    { key: "preparing", label: t("status.preparing") },
+    { key: "ready", label: t("status.ready") },
+    { key: "delivered", label: t("status.delivered") },
+    { key: "all", label: t("status.all") },
+  ];
 
   useEffect(() => {
     const i = setInterval(() => setTick((t) => t + 1), 5000);
@@ -77,13 +79,14 @@ function Kitchen() {
           <div className="flex items-center gap-4">
             <Logo />
             <span className="hidden md:inline rounded-full border hairline px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-gold">
-              Kitchen Display
+              {t("kitchen.display")}
             </span>
           </div>
           <div className="flex items-center gap-3 text-xs">
-            <Stat label="New" value={counts.new} accent="text-gold" />
-            <Stat label="Cooking" value={counts.preparing} accent="text-amber-300" />
-            <Stat label="Ready" value={counts.ready} accent="text-emerald-300" />
+            <Stat label={t("status.new")} value={counts.new} accent="text-gold" />
+            <Stat label={t("kitchen.cooking")} value={counts.preparing} accent="text-amber-300" />
+            <Stat label={t("status.ready")} value={counts.ready} accent="text-emerald-300" />
+            <LanguageToggle />
             <button onClick={async () => { await signOut(); navigate({ to: "/login" }); }} className="grid h-9 w-9 place-items-center rounded-full bg-secondary hover:bg-card">
               <LogOut className="h-4 w-4" />
             </button>
@@ -104,7 +107,7 @@ function Kitchen() {
         {visible.length === 0 ? (
           <div className="grid place-items-center rounded-2xl glass py-32 text-center">
             <ChefHat className="h-12 w-12 text-muted-foreground/30" />
-            <p className="mt-4 text-sm text-muted-foreground">No orders in this view.</p>
+            <p className="mt-4 text-sm text-muted-foreground">{t("kitchen.noOrders")}</p>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -115,11 +118,11 @@ function Kitchen() {
                 <article key={order.id} className={`flex flex-col overflow-hidden rounded-2xl border-2 glass ${STATUS_STYLE[status]}`}>
                   <header className="flex items-center justify-between border-b hairline p-4">
                     <div>
-                      <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Table</div>
+                      <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">{t("orders.table")}</div>
                       <div className="font-display text-2xl gold-text">{order.table_name}</div>
                     </div>
                     <span className={`rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.2em] ${STATUS_STYLE[status]}`}>
-                      {status}
+                      {t(`status.${status}`)}
                     </span>
                   </header>
                   <ul className="flex-1 space-y-2 p-4 text-sm">
@@ -134,14 +137,14 @@ function Kitchen() {
                   </ul>
                   <footer className="space-y-3 border-t hairline p-4">
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="inline-flex items-center gap-1.5"><Clock className="h-3 w-3" />{timeSince(order.created_at!)} ago</span>
+                      <span className="inline-flex items-center gap-1.5"><Clock className="h-3 w-3" />{timeSince(order.created_at!)} {t("orders.ago")}</span>
                       <span className="font-display text-base text-foreground">${Number(order.total).toFixed(2)}</span>
                     </div>
                     {(status === "new" || status === "preparing" || status === "ready") && (
                       <div className="flex gap-2">
                         {next && (
                           <button onClick={() => advance(order.id, next)} className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gold py-2.5 text-xs font-semibold uppercase tracking-[0.15em] text-primary-foreground hover:bg-gold-soft">
-                            <CheckCheck className="h-3.5 w-3.5" /> Mark {next}
+                            <CheckCheck className="h-3.5 w-3.5" /> {t("kitchen.markPrefix")} {t(`status.${next}`)}
                           </button>
                         )}
                         <button onClick={() => cancel(order.id)} className="grid h-10 w-10 place-items-center rounded-xl border hairline text-muted-foreground hover:bg-destructive/10 hover:text-destructive">

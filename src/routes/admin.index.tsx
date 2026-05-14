@@ -7,9 +7,9 @@ import {
 import { ArrowDownRight, ArrowUpRight, DollarSign, ShoppingBag, TrendingUp, Users } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { formatPrice } from "@/lib/store";
-import { CATEGORY_LABELS } from "@/lib/types";
 import { fetchDishes, fetchTables } from "@/lib/api";
 import { useOrders } from "@/hooks/useRealtimeOrders";
+import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/admin/")({
   component: Dashboard,
@@ -19,6 +19,7 @@ function Dashboard() {
   const { data: orders = [] } = useOrders();
   const { data: dishes = [] } = useQuery({ queryKey: ["dishes"], queryFn: fetchDishes });
   const { data: tables = [] } = useQuery({ queryKey: ["tables"], queryFn: fetchTables });
+  const { t, lang } = useT();
 
   const stats = useMemo(() => {
     const completed = orders.filter((o) => o.status !== "cancelled");
@@ -32,7 +33,6 @@ function Dashboard() {
     };
   }, [orders]);
 
-  // Hourly revenue for today
   const hourly = useMemo(() => {
     const now = new Date(); now.setHours(0, 0, 0, 0);
     const buckets: Record<number, { hour: string; revenue: number; orders: number }> = {};
@@ -49,7 +49,6 @@ function Dashboard() {
     return Object.values(buckets);
   }, [orders]);
 
-  // Last 7 days
   const weekly = useMemo(() => {
     const days: Array<{ day: string; revenue: number }> = [];
     for (let i = 6; i >= 0; i--) {
@@ -60,10 +59,10 @@ function Dashboard() {
         const od = new Date(o.created_at!);
         return od >= d && od < next ? s + Number(o.total) : s;
       }, 0);
-      days.push({ day: d.toLocaleDateString("en", { weekday: "short" }), revenue: rev });
+      days.push({ day: d.toLocaleDateString(lang === "ar" ? "ar" : "en", { weekday: "short" }), revenue: rev });
     }
     return days;
-  }, [orders]);
+  }, [orders, lang]);
 
   const topDishes = useMemo(() => {
     const map = new Map<string, { name: string; qty: number; revenue: number }>();
@@ -79,27 +78,27 @@ function Dashboard() {
   const categoryData = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const d of dishes) counts[d.category] = (counts[d.category] ?? 0) + 1;
-    return Object.entries(counts).map(([k, v]) => ({ name: CATEGORY_LABELS[k as keyof typeof CATEGORY_LABELS], value: v }));
-  }, [dishes]);
+    return Object.entries(counts).map(([k, v]) => ({ name: t(`cat.${k}`), value: v }));
+  }, [dishes, t]);
 
   const PIE_COLORS = ["oklch(0.82 0.13 85)", "oklch(0.65 0.13 70)", "oklch(0.55 0.1 60)", "oklch(0.7 0.08 50)", "oklch(0.45 0.06 45)"];
 
   return (
     <div className="space-y-6 p-5 md:p-8">
       <div>
-        <div className="text-[10px] uppercase tracking-[0.3em] text-gold">Dashboard</div>
-        <h1 className="mt-2 font-display text-4xl">Tonight at a glance.</h1>
+        <div className="text-[10px] uppercase tracking-[0.3em] text-gold">{t("nav.dashboard")}</div>
+        <h1 className="mt-2 font-display text-4xl">{t("dash.title")}</h1>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KPI icon={DollarSign} label="Total revenue" value={formatPrice(stats.revenue)} delta="live" up />
-        <KPI icon={ShoppingBag} label="Orders" value={`${stats.orders}`} delta="live" up />
-        <KPI icon={TrendingUp} label="Avg ticket" value={formatPrice(stats.avg || 0)} delta="live" up />
-        <KPI icon={Users} label="Active tables" value={`${stats.activeTables}/${tables.length}`} delta="" />
+        <KPI icon={DollarSign} label={t("dash.revenue")} value={formatPrice(stats.revenue)} delta={t("common.live")} up />
+        <KPI icon={ShoppingBag} label={t("dash.orders")} value={`${stats.orders}`} delta={t("common.live")} up />
+        <KPI icon={TrendingUp} label={t("dash.avg")} value={formatPrice(stats.avg || 0)} delta={t("common.live")} up />
+        <KPI icon={Users} label={t("dash.activeTables")} value={`${stats.activeTables}/${tables.length}`} delta="" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Panel title="Revenue today" subtitle="Hourly breakdown" className="lg:col-span-2">
+        <Panel title={t("dash.revenueToday")} subtitle={t("dash.hourly")} className="lg:col-span-2">
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={hourly}>
               <defs>
@@ -117,7 +116,7 @@ function Dashboard() {
           </ResponsiveContainer>
         </Panel>
 
-        <Panel title="Menu mix" subtitle="By category">
+        <Panel title={t("dash.menuMix")} subtitle={t("dash.byCategory")}>
           <ResponsiveContainer width="100%" height={280}>
             <PieChart>
               <Pie data={categoryData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={4} isAnimationActive={false}>
@@ -130,7 +129,7 @@ function Dashboard() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Panel title="Weekly revenue" subtitle="Last 7 days" className="lg:col-span-2">
+        <Panel title={t("dash.weekly")} subtitle={t("dash.last7")} className="lg:col-span-2">
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={weekly}>
               <CartesianGrid stroke="oklch(1 0 0 / 0.05)" vertical={false} />
@@ -142,16 +141,16 @@ function Dashboard() {
           </ResponsiveContainer>
         </Panel>
 
-        <Panel title="Top selling" subtitle={`${topDishes.length} dishes`}>
+        <Panel title={t("dash.topSelling")} subtitle={`${topDishes.length} ${t("dash.dishes")}`}>
           <ul className="space-y-3">
             {topDishes.length === 0 ? (
-              <li className="text-sm text-muted-foreground">No orders yet.</li>
+              <li className="text-sm text-muted-foreground">{t("dash.noOrders")}</li>
             ) : topDishes.map((d, i) => (
               <li key={d.name} className="flex items-center gap-3">
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-gold/10 font-display text-sm gold-text">{i + 1}</span>
                 <div className="flex-1 min-w-0">
                   <div className="truncate text-sm font-medium">{d.name}</div>
-                  <div className="text-[11px] text-muted-foreground">{d.qty} sold</div>
+                  <div className="text-[11px] text-muted-foreground">{d.qty} {t("dash.sold")}</div>
                 </div>
                 <div className="font-display gold-text">{formatPrice(d.revenue)}</div>
               </li>
