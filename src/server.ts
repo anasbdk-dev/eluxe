@@ -14,14 +14,17 @@ const SECURITY_HEADERS: Record<string, string> = {
 
   "Content-Security-Policy": [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'", // removed unsafe-eval
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
-    "frame-ancestors 'none'",
+    "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
+    "frame-ancestors 'none'",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+    "img-src 'self' data: https: blob:",
+    "font-src 'self' https://fonts.gstatic.com",
+
+    // 🔥 IMPORTANT CHANGE
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "script-src 'self'", 
   ].join("; "),
 };
 
