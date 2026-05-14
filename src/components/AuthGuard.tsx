@@ -48,7 +48,7 @@ export function AuthGuard({ allow, children }: Props) {
     return (
       <div className="grid min-h-screen place-items-center">
         <div className="text-center">
-          <div className="font-display text-2xl gold-text">AURALIS</div>
+          <div className="font-display text-2xl gold-text">ELUXE</div>
           <div className="mt-2 text-xs uppercase tracking-[0.3em] text-muted-foreground">
             Authenticating…
           </div>
