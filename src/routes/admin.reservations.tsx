@@ -3,6 +3,7 @@ import { CalendarCheck, Phone, Trash2, Users } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchReservations, deleteReservation } from "@/lib/api";
 import { toast } from "sonner";
+import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/admin/reservations")({
   component: ReservationsPage,
@@ -11,26 +12,27 @@ export const Route = createFileRoute("/admin/reservations")({
 function ReservationsPage() {
   const qc = useQueryClient();
   const { data: reservations = [], isLoading } = useQuery({ queryKey: ["reservations"], queryFn: fetchReservations });
+  const { t } = useT();
 
   const remove = async (id: string) => {
     await deleteReservation(id);
     qc.invalidateQueries({ queryKey: ["reservations"] });
-    toast.success("Reservation removed");
+    toast.success(t("res.removed"));
   };
 
   return (
     <div className="space-y-6 p-5 md:p-8">
       <header>
-        <div className="text-[10px] uppercase tracking-[0.3em] text-gold">Reservations</div>
-        <h1 className="mt-2 font-display text-4xl">Upcoming bookings</h1>
+        <div className="text-[10px] uppercase tracking-[0.3em] text-gold">{t("nav.reservations")}</div>
+        <h1 className="mt-2 font-display text-4xl">{t("res.title")}</h1>
       </header>
 
       {isLoading ? (
-        <div className="rounded-2xl glass p-16 text-center text-sm text-muted-foreground">Loading…</div>
+        <div className="rounded-2xl glass p-16 text-center text-sm text-muted-foreground">{t("common.loading")}</div>
       ) : reservations.length === 0 ? (
         <div className="grid place-items-center rounded-2xl glass py-24 text-center">
           <CalendarCheck className="h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-4 text-sm text-muted-foreground">No reservations yet.</p>
+          <p className="mt-4 text-sm text-muted-foreground">{t("res.empty")}</p>
         </div>
       ) : (
         <div className="grid gap-3">
