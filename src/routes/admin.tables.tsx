@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchTables, createTable, deleteTable, updateTable } from "@/lib/api";
 import { useOrders } from "@/hooks/useRealtimeOrders";
 import { toast } from "sonner";
+import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/admin/tables")({
   component: TablesPage,
@@ -15,6 +16,7 @@ function TablesPage() {
   const qc = useQueryClient();
   const { data: tables = [] } = useQuery({ queryKey: ["tables"], queryFn: fetchTables });
   const { data: orders = [] } = useOrders();
+  const { t } = useT();
 
   const [name, setName] = useState("");
   const [seats, setSeats] = useState(2);
@@ -46,73 +48,73 @@ function TablesPage() {
   return (
     <div className="space-y-6 p-5 md:p-8">
       <header>
-        <div className="text-[10px] uppercase tracking-[0.3em] text-gold">Tables</div>
-        <h1 className="mt-2 font-display text-4xl">QR codes & seating</h1>
+        <div className="text-[10px] uppercase tracking-[0.3em] text-gold">{t("nav.tables")}</div>
+        <h1 className="mt-2 font-display text-4xl">{t("tables.title")}</h1>
       </header>
 
       <div className="rounded-2xl glass p-5">
         <form onSubmit={async (e) => {
           e.preventDefault();
           if (!name) return;
-          try { await createTable(name, seats, vip); setName(""); setSeats(2); setVip(false); refresh(); toast.success("Table added"); }
+          try { await createTable(name, seats, vip); setName(""); setSeats(2); setVip(false); refresh(); toast.success(t("tables.added")); }
           catch (err: any) { toast.error(err.message); }
         }} className="flex flex-wrap items-end gap-3">
           <label className="flex-1 min-w-[160px]">
-            <span className="mb-1.5 block text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Name</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Table 8 / VIP 3" className="w-full rounded-lg border border-border bg-input/60 px-3 py-2 text-sm" />
+            <span className="mb-1.5 block text-[10px] uppercase tracking-[0.25em] text-muted-foreground">{t("tables.name")}</span>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("tables.namePh")} className="w-full rounded-lg border border-border bg-input/60 px-3 py-2 text-sm" />
           </label>
           <label>
-            <span className="mb-1.5 block text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Seats</span>
+            <span className="mb-1.5 block text-[10px] uppercase tracking-[0.25em] text-muted-foreground">{t("tables.seats")}</span>
             <input type="number" min={1} max={30} value={seats} onChange={(e) => setSeats(Number(e.target.value))} className="w-24 rounded-lg border border-border bg-input/60 px-3 py-2 text-sm" />
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={vip} onChange={(e) => setVip(e.target.checked)} /> VIP
+            <input type="checkbox" checked={vip} onChange={(e) => setVip(e.target.checked)} /> {t("tables.vip")}
           </label>
           <button className="inline-flex items-center gap-2 rounded-full bg-gold px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-gold-soft">
-            <Plus className="h-4 w-4" /> Add table
+            <Plus className="h-4 w-4" /> {t("tables.add")}
           </button>
         </form>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {tables.map((t) => {
-          const url = `${baseUrl}/menu?t=${encodeURIComponent(t.qr_token)}`;
-          const tableOrders = orders.filter((o) => o.table_id === t.id);
+        {tables.map((tbl) => {
+          const url = `${baseUrl}/menu?t=${encodeURIComponent(tbl.qr_token)}`;
+          const tableOrders = orders.filter((o) => o.table_id === tbl.id);
           const revenue = tableOrders.reduce((s, o) => s + (o.status !== "cancelled" ? Number(o.total) : 0), 0);
           return (
-            <article key={t.id} className="rounded-2xl glass p-5">
+            <article key={tbl.id} className="rounded-2xl glass p-5">
               <header className="flex items-start justify-between">
                 <div>
-                  <div className="font-display text-2xl">{t.name} {t.is_vip && <span className="ml-1 text-[10px] uppercase tracking-widest text-gold">VIP</span>}</div>
-                  <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{t.seats} seats</div>
+                  <div className="font-display text-2xl">{tbl.name} {tbl.is_vip && <span className="ms-1 text-[10px] uppercase tracking-widest text-gold">{t("tables.vip")}</span>}</div>
+                  <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{tbl.seats} {t("tables.seatsLabel")}</div>
                 </div>
                 <button onClick={async () => {
-                  const newName = prompt("Rename table", t.name);
-                  if (newName) { await updateTable(t.id, { name: newName }); refresh(); }
+                  const newName = prompt(t("tables.rename"), tbl.name);
+                  if (newName) { await updateTable(tbl.id, { name: newName }); refresh(); }
                 }} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-secondary">
                   <Edit2 className="h-3.5 w-3.5" />
                 </button>
               </header>
               <div className="my-4 flex justify-center rounded-xl bg-white p-4">
-                <QRCodeSVG id={`qr-${t.id}`} value={url} size={160} bgColor="#ffffff" fgColor="#1a1714" level="M" />
+                <QRCodeSVG id={`qr-${tbl.id}`} value={url} size={160} bgColor="#ffffff" fgColor="#1a1714" level="M" />
               </div>
-              <div className="text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground break-all">{t.qr_token}</div>
+              <div className="text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground break-all">{tbl.qr_token}</div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-center">
                 <div className="rounded-lg border hairline p-2">
                   <div className="font-display gold-text">{tableOrders.length}</div>
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Orders</div>
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{t("nav.orders")}</div>
                 </div>
                 <div className="rounded-lg border hairline p-2">
                   <div className="font-display gold-text">${revenue.toFixed(0)}</div>
-                  <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Revenue</div>
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{t("tables.revenue")}</div>
                 </div>
               </div>
               <div className="mt-4 grid grid-cols-3 gap-2">
-                <button onClick={() => downloadQR(t.id, t.name)} className="inline-flex items-center justify-center rounded-lg border hairline py-2 text-xs hover:bg-secondary"><Download className="h-3 w-3" /></button>
-                <button onClick={() => printQR(t.id, t.name)} className="inline-flex items-center justify-center rounded-lg border hairline py-2 text-xs hover:bg-secondary"><Printer className="h-3 w-3" /></button>
+                <button onClick={() => downloadQR(tbl.id, tbl.name)} className="inline-flex items-center justify-center rounded-lg border hairline py-2 text-xs hover:bg-secondary"><Download className="h-3 w-3" /></button>
+                <button onClick={() => printQR(tbl.id, tbl.name)} className="inline-flex items-center justify-center rounded-lg border hairline py-2 text-xs hover:bg-secondary"><Printer className="h-3 w-3" /></button>
                 <button onClick={async () => {
-                  if (!confirm(`Delete ${t.name}?`)) return;
-                  await deleteTable(t.id); refresh(); toast.success("Table removed");
+                  if (!confirm(t("tables.confirmDelete", { name: tbl.name }))) return;
+                  await deleteTable(tbl.id); refresh(); toast.success(t("tables.removed"));
                 }} className="inline-flex items-center justify-center rounded-lg border hairline py-2 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"><Trash2 className="h-3 w-3" /></button>
               </div>
             </article>

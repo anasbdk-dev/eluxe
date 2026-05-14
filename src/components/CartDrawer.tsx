@@ -5,6 +5,7 @@ import { calcTotals, formatPrice, useCart } from "@/lib/store";
 import { placeOrder } from "@/lib/api";
 import type { TableRow } from "@/lib/types";
 import { toast } from "sonner";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   open: boolean;
@@ -18,6 +19,7 @@ export function CartDrawer({ open, onClose, table }: Props) {
   const removeFromCart = useCart((s) => s.removeFromCart);
   const clearCart = useCart((s) => s.clearCart);
   const totals = calcTotals(cart);
+  const { t } = useT();
   const [confirmed, setConfirmed] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -40,9 +42,9 @@ export function CartDrawer({ open, onClose, table }: Props) {
       });
       clearCart();
       setConfirmed(order.id);
-      toast.success("Order sent to kitchen");
+      toast.success(t("cart.sent"));
     } catch (e: any) {
-      toast.error(e.message ?? "Could not place order");
+      toast.error(e.message ?? t("cart.failed"));
     } finally {
       setBusy(false);
     }
@@ -64,7 +66,7 @@ export function CartDrawer({ open, onClose, table }: Props) {
           >
             <header className="flex items-center justify-between border-b hairline p-5">
               <div>
-                <div className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">Your Order</div>
+                <div className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">{t("cart.yourOrder")}</div>
                 <div className="font-display text-xl">{table.name}</div>
               </div>
               <button onClick={() => { onClose(); setConfirmed(null); }} className="grid h-9 w-9 place-items-center rounded-full bg-secondary hover:bg-card">
@@ -78,16 +80,16 @@ export function CartDrawer({ open, onClose, table }: Props) {
                   <Sparkles className="h-10 w-10 text-gold" />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="font-display text-3xl gold-text">Bon appétit</h3>
+                  <h3 className="font-display text-3xl gold-text">{t("cart.bonAppetit")}</h3>
                   <p className="text-sm text-muted-foreground text-balance">
-                    Your order has been sent to the kitchen. Estimated preparation: 20–25 minutes.
+                    {t("cart.sentBody")}
                   </p>
                 </div>
                 <button
                   onClick={() => { setConfirmed(null); onClose(); }}
                   className="rounded-full bg-gold px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-gold-soft"
                 >
-                  Continue Browsing
+                  {t("common.continue")}
                 </button>
               </div>
             ) : (
@@ -96,7 +98,7 @@ export function CartDrawer({ open, onClose, table }: Props) {
                   {cart.length === 0 ? (
                     <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
                       <ShoppingBag className="h-10 w-10 text-muted-foreground/40" />
-                      <p className="text-sm text-muted-foreground">Your cart is empty</p>
+                      <p className="text-sm text-muted-foreground">{t("cart.empty")}</p>
                     </div>
                   ) : (
                     <ul className="space-y-3">
@@ -133,18 +135,18 @@ export function CartDrawer({ open, onClose, table }: Props) {
                 {cart.length > 0 && (
                   <div className="space-y-4 border-t hairline p-5">
                     <dl className="space-y-1.5 text-sm">
-                      <Row label="Subtotal" value={formatPrice(totals.subtotal)} />
-                      <Row label="Service (10%)" value={formatPrice(totals.service)} />
-                      <Row label="Tax (8%)" value={formatPrice(totals.tax)} />
+                      <Row label={t("cart.subtotal")} value={formatPrice(totals.subtotal)} />
+                      <Row label={t("cart.service")} value={formatPrice(totals.service)} />
+                      <Row label={t("cart.tax")} value={formatPrice(totals.tax)} />
                       <div className="my-2 h-px bg-border" />
-                      <Row label="Total" value={formatPrice(totals.total)} large />
+                      <Row label={t("cart.total")} value={formatPrice(totals.total)} large />
                     </dl>
                     <button
                       onClick={submit}
                       disabled={busy}
                       className="w-full rounded-xl bg-gold py-4 text-sm font-semibold uppercase tracking-[0.2em] text-primary-foreground transition-all hover:bg-gold-soft disabled:opacity-60"
                     >
-                      {busy ? "Sending…" : "Confirm Order"}
+                      {busy ? t("cart.sending") : t("cart.confirm")}
                     </button>
                   </div>
                 )}

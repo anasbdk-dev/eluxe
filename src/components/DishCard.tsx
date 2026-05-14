@@ -3,6 +3,7 @@ import { Flame, Clock } from "lucide-react";
 import type { Dish } from "@/lib/types";
 import { BadgePill } from "./BadgePill";
 import { formatPrice } from "@/lib/store";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   dish: Dish;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function DishCard({ dish, onSelect, index = 0 }: Props) {
+  const { t } = useT();
   return (
     <motion.button
       initial={{ opacity: 0, y: 16 }}
@@ -36,7 +38,7 @@ export function DishCard({ dish, onSelect, index = 0 }: Props) {
         )}
         {!dish.available && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/70 text-xs uppercase tracking-[0.3em] text-muted-foreground">
-            Unavailable
+            {t("common.unavailable")}
           </div>
         )}
       </div>

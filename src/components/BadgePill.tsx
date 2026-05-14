@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
 import type { Badge } from "@/lib/types";
-import { BADGE_LABELS } from "@/lib/types";
 import { Crown, Sparkles, Flame, TrendingUp, Tag, Star, ChefHat, Hourglass } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 const STYLES: Record<Badge, { bg: string; fg: string; icon: LucideIcon }> = {
   vip: { bg: "bg-gold/20", fg: "text-gold", icon: Crown },
@@ -18,6 +18,7 @@ const STYLES: Record<Badge, { bg: string; fg: string; icon: LucideIcon }> = {
 export function BadgePill({ badge }: { badge: Badge }) {
   const s = STYLES[badge];
   const Icon = s.icon;
+  const { t } = useT();
   return (
     <motion.span
       initial={{ opacity: 0, y: -4 }}
@@ -25,7 +26,7 @@ export function BadgePill({ badge }: { badge: Badge }) {
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${s.bg} ${s.fg} backdrop-blur-md`}
     >
       <Icon className="h-2.5 w-2.5" />
-      {BADGE_LABELS[badge]}
+      {t(`badge.${badge}`)}
     </motion.span>
   );
 }

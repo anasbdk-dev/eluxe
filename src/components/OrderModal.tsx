@@ -5,6 +5,7 @@ import type { Dish } from "@/lib/types";
 import { formatPrice, useCart } from "@/lib/store";
 import { BadgePill } from "./BadgePill";
 import { toast } from "sonner";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   dish: Dish | null;
@@ -13,6 +14,7 @@ interface Props {
 
 export function OrderModal({ dish, onClose }: Props) {
   const addToCart = useCart((s) => s.addToCart);
+  const { t } = useT();
   const [qty, setQty] = useState(1);
   const [notes, setNotes] = useState("");
 
@@ -38,7 +40,7 @@ export function OrderModal({ dish, onClose }: Props) {
           >
             <button
               onClick={onClose}
-              className="absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full bg-background/60 text-foreground hover:bg-background"
+              className="absolute end-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full bg-background/60 text-foreground hover:bg-background"
             >
               <X className="h-4 w-4" />
             </button>
@@ -56,12 +58,12 @@ export function OrderModal({ dish, onClose }: Props) {
               <p className="text-sm leading-relaxed text-muted-foreground">{dish.description}</p>
               <div>
                 <label className="mb-2 block text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                  Special requests
+                  {t("modal.specialReq")}
                 </label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="No onions, extra cheese, medium rare…"
+                  placeholder={t("modal.notesPh")}
                   rows={2}
                   className="w-full resize-none rounded-xl border border-border bg-input/50 px-4 py-3 text-sm placeholder:text-muted-foreground/60 focus:border-gold focus:outline-none focus:ring-2 focus:ring-ring"
                 />
@@ -78,8 +80,8 @@ export function OrderModal({ dish, onClose }: Props) {
                     className="grid h-9 w-9 place-items-center rounded-full bg-gold text-primary-foreground hover:bg-gold-soft"
                   ><Plus className="h-4 w-4" /></button>
                 </div>
-                <div className="text-right">
-                  <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Total</div>
+                <div className="text-end">
+                  <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{t("modal.total")}</div>
                   <div className="font-display text-2xl gold-text">{formatPrice(dish.price * qty)}</div>
                 </div>
               </div>
@@ -88,17 +90,17 @@ export function OrderModal({ dish, onClose }: Props) {
                   onClick={onClose}
                   className="rounded-xl border border-border bg-transparent px-4 py-3.5 text-sm font-medium hover:bg-secondary"
                 >
-                  Continue Browsing
+                  {t("common.continue")}
                 </button>
                 <button
                   onClick={() => {
                     addToCart(dish, qty, notes || undefined);
-                    toast.success(`${dish.name} added`, { description: `${qty} × ${formatPrice(dish.price)}` });
+                    toast.success(t("modal.added", { name: dish.name }), { description: `${qty} × ${formatPrice(dish.price)}` });
                     onClose();
                   }}
                   className="rounded-xl bg-gold px-4 py-3.5 text-sm font-semibold text-primary-foreground transition-all hover:bg-gold-soft hover:shadow-[0_8px_30px_-8px_oklch(0.82_0.13_85_/_0.6)]"
                 >
-                  Add to Order
+                  {t("modal.add")}
                 </button>
               </div>
             </div>

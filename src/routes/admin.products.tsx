@@ -5,9 +5,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchDishes, upsertDish, deleteDish } from "@/lib/api";
 import { formatPrice } from "@/lib/store";
 import type { Badge, Category, Dish } from "@/lib/types";
-import { BADGE_LABELS, CATEGORY_LABELS } from "@/lib/types";
 import { BadgePill } from "@/components/BadgePill";
 import { toast } from "sonner";
+import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/admin/products")({
   component: Products,
@@ -33,6 +33,7 @@ const empty: FormData = {
 function Products() {
   const qc = useQueryClient();
   const { data: dishes = [], isLoading } = useQuery({ queryKey: ["dishes"], queryFn: fetchDishes });
+  const { t } = useT();
 
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<Category | "all">("all");
@@ -54,10 +55,10 @@ function Products() {
   };
 
   const onDelete = async (id: string) => {
-    if (!confirm("Delete this dish?")) return;
+    if (!confirm(t("products.confirmDelete"))) return;
     await deleteDish(id);
     refresh();
-    toast.success("Dish removed");
+    toast.success(t("products.removed"));
   };
 
   const onSave = async (f: FormData) => {
@@ -77,7 +78,7 @@ function Products() {
       });
       refresh();
       setEditing(null);
-      toast.success("Dish saved");
+      toast.success(t("products.saved"));
     } catch (e: any) {
       toast.error(e.message);
     }
@@ -87,26 +88,26 @@ function Products() {
     <div className="space-y-6 p-5 md:p-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.3em] text-gold">Menu</div>
-          <h1 className="mt-2 font-display text-4xl">Dishes & beverages</h1>
+          <div className="text-[10px] uppercase tracking-[0.3em] text-gold">{t("nav.menu")}</div>
+          <h1 className="mt-2 font-display text-4xl">{t("products.title")}</h1>
         </div>
         <button
           onClick={() => setEditing({ ...empty })}
           className="inline-flex items-center gap-2 rounded-full bg-gold px-5 py-3 text-sm font-semibold text-primary-foreground hover:bg-gold-soft"
         >
-          <Plus className="h-4 w-4" /> New dish
+          <Plus className="h-4 w-4" /> {t("products.new")}
         </button>
       </header>
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[220px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search dishes…" className="w-full rounded-full border border-border bg-input/60 py-2.5 pl-10 pr-4 text-sm focus:border-gold focus:outline-none focus:ring-2 focus:ring-ring" />
+          <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("products.searchPh")} className="w-full rounded-full border border-border bg-input/60 py-2.5 ps-10 pe-4 text-sm focus:border-gold focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
         <div className="scrollbar-hide flex gap-1 overflow-x-auto">
           {(["all", ...CATS] as const).map((c) => (
             <button key={c} onClick={() => setCat(c)} className={`whitespace-nowrap rounded-full px-3.5 py-1.5 text-[11px] uppercase tracking-[0.2em] ${cat === c ? "bg-gold text-primary-foreground" : "border hairline text-muted-foreground hover:text-foreground"}`}>
-              {c === "all" ? "All" : CATEGORY_LABELS[c]}
+              {c === "all" ? t("common.all") : t(`cat.${c}`)}
             </button>
           ))}
         </div>
@@ -116,16 +117,16 @@ function Products() {
         <table className="w-full">
           <thead className="border-b hairline text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
             <tr>
-              <th className="px-5 py-3 text-left">Dish</th>
-              <th className="hidden px-3 py-3 text-left md:table-cell">Category</th>
-              <th className="hidden px-3 py-3 text-left lg:table-cell">Badges</th>
-              <th className="px-3 py-3 text-right">Price</th>
-              <th className="px-3 py-3 text-center">Active</th>
-              <th className="px-5 py-3 text-right">Actions</th>
+              <th className="px-5 py-3 text-start">{t("products.dish")}</th>
+              <th className="hidden px-3 py-3 text-start md:table-cell">{t("products.category")}</th>
+              <th className="hidden px-3 py-3 text-start lg:table-cell">{t("products.badges")}</th>
+              <th className="px-3 py-3 text-end">{t("products.price")}</th>
+              <th className="px-3 py-3 text-center">{t("products.active")}</th>
+              <th className="px-5 py-3 text-end">{t("common.actions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y hairline">
-            {isLoading && <tr><td colSpan={6} className="py-16 text-center text-sm text-muted-foreground">Loading…</td></tr>}
+            {isLoading && <tr><td colSpan={6} className="py-16 text-center text-sm text-muted-foreground">{t("common.loading")}</td></tr>}
             {!isLoading && filtered.map((d) => (
               <tr key={d.id} className="hover:bg-secondary/40">
                 <td className="px-5 py-3">
@@ -137,17 +138,17 @@ function Products() {
                     </div>
                   </div>
                 </td>
-                <td className="hidden px-3 py-3 text-sm text-muted-foreground md:table-cell">{CATEGORY_LABELS[d.category]}</td>
+                <td className="hidden px-3 py-3 text-sm text-muted-foreground md:table-cell">{t(`cat.${d.category}`)}</td>
                 <td className="hidden px-3 py-3 lg:table-cell">
                   <div className="flex flex-wrap gap-1">{d.badges.slice(0, 3).map((b) => <BadgePill key={b} badge={b} />)}</div>
                 </td>
-                <td className="px-3 py-3 text-right font-display gold-text">{formatPrice(d.price)}</td>
+                <td className="px-3 py-3 text-end font-display gold-text">{formatPrice(d.price)}</td>
                 <td className="px-3 py-3 text-center">
                   <button onClick={() => onToggle(d)} className={`relative inline-flex h-5 w-9 items-center rounded-full ${d.available ? "bg-gold" : "bg-secondary"}`}>
                     <span className={`inline-block h-4 w-4 rounded-full bg-background transition-transform ${d.available ? "translate-x-4" : "translate-x-0.5"}`} />
                   </button>
                 </td>
-                <td className="px-5 py-3 text-right">
+                <td className="px-5 py-3 text-end">
                   <div className="inline-flex gap-1">
                     <button onClick={() => setEditing({
                       id: d.id, name: d.name, description: d.description, price: d.price,
@@ -161,7 +162,7 @@ function Products() {
               </tr>
             ))}
             {!isLoading && filtered.length === 0 && (
-              <tr><td colSpan={6} className="py-16 text-center text-sm text-muted-foreground">No dishes match.</td></tr>
+              <tr><td colSpan={6} className="py-16 text-center text-sm text-muted-foreground">{t("products.noMatch")}</td></tr>
             )}
           </tbody>
         </table>
@@ -174,44 +175,45 @@ function Products() {
 
 function EditModal({ data, onClose, onSave }: { data: FormData; onClose: () => void; onSave: (f: FormData) => void }) {
   const [f, setF] = useState<FormData>(data);
+  const { t } = useT();
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md p-4" onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-2xl rounded-3xl glass-strong p-6 md:p-8 max-h-[90vh] overflow-y-auto">
-        <button onClick={onClose} className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-secondary"><X className="h-4 w-4" /></button>
-        <h2 className="font-display text-2xl">{f.id ? "Edit dish" : "New dish"}</h2>
+        <button onClick={onClose} className="absolute end-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-secondary"><X className="h-4 w-4" /></button>
+        <h2 className="font-display text-2xl">{f.id ? t("products.editDish") : t("products.newDish")}</h2>
         <form onSubmit={(e) => { e.preventDefault(); onSave(f); }} className="mt-6 grid gap-4 sm:grid-cols-2">
-          <Field label="Name"><input required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} className="ip" /></Field>
-          <Field label="Price"><input required type="number" step="0.01" value={f.price} onChange={(e) => setF({ ...f, price: Number(e.target.value) })} className="ip" /></Field>
-          <Field label="Category" full>
+          <Field label={t("products.name")}><input required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} className="ip" /></Field>
+          <Field label={t("products.price")}><input required type="number" step="0.01" value={f.price} onChange={(e) => setF({ ...f, price: Number(e.target.value) })} className="ip" /></Field>
+          <Field label={t("products.category")} full>
             <select value={f.category} onChange={(e) => setF({ ...f, category: e.target.value as Category })} className="ip">
-              {CATS.map((c) => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
+              {CATS.map((c) => <option key={c} value={c}>{t(`cat.${c}`)}</option>)}
             </select>
           </Field>
-          <Field label="Image URL" full><input value={f.image} onChange={(e) => setF({ ...f, image: e.target.value })} className="ip" /></Field>
-          <Field label="Description" full><textarea rows={3} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} className="ip resize-none" /></Field>
-          <Field label="Calories"><input type="number" value={f.calories ?? ""} onChange={(e) => setF({ ...f, calories: e.target.value ? Number(e.target.value) : undefined })} className="ip" /></Field>
-          <Field label="Prep time (min)"><input type="number" value={f.prep_time ?? ""} onChange={(e) => setF({ ...f, prep_time: e.target.value ? Number(e.target.value) : undefined })} className="ip" /></Field>
-          <Field label="Badges" full>
+          <Field label={t("products.image")} full><input value={f.image} onChange={(e) => setF({ ...f, image: e.target.value })} className="ip" /></Field>
+          <Field label={t("products.description")} full><textarea rows={3} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} className="ip resize-none" /></Field>
+          <Field label={t("products.calories")}><input type="number" value={f.calories ?? ""} onChange={(e) => setF({ ...f, calories: e.target.value ? Number(e.target.value) : undefined })} className="ip" /></Field>
+          <Field label={t("products.prepTime")}><input type="number" value={f.prep_time ?? ""} onChange={(e) => setF({ ...f, prep_time: e.target.value ? Number(e.target.value) : undefined })} className="ip" /></Field>
+          <Field label={t("products.badges")} full>
             <div className="flex flex-wrap gap-2">
               {ALL_BADGES.map((b) => {
                 const on = f.badges.includes(b);
                 return (
                   <button type="button" key={b} onClick={() => setF({ ...f, badges: on ? f.badges.filter((x) => x !== b) : [...f.badges, b] })} className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-wider ${on ? "bg-gold text-primary-foreground" : "border hairline text-muted-foreground"}`}>
-                    {BADGE_LABELS[b]}
+                    {t(`badge.${b}`)}
                   </button>
                 );
               })}
             </div>
           </Field>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={f.available} onChange={(e) => setF({ ...f, available: e.target.checked })} /> Available
+            <input type="checkbox" checked={f.available} onChange={(e) => setF({ ...f, available: e.target.checked })} /> {t("products.available")}
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={f.is_vip_only} onChange={(e) => setF({ ...f, is_vip_only: e.target.checked })} /> VIP only
+            <input type="checkbox" checked={f.is_vip_only} onChange={(e) => setF({ ...f, is_vip_only: e.target.checked })} /> {t("products.vipOnly")}
           </label>
           <div className="sm:col-span-2 flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-border py-3 text-sm">Cancel</button>
-            <button type="submit" className="flex-1 rounded-xl bg-gold py-3 text-sm font-semibold text-primary-foreground hover:bg-gold-soft">Save</button>
+            <button type="button" onClick={onClose} className="flex-1 rounded-xl border border-border py-3 text-sm">{t("common.cancel")}</button>
+            <button type="submit" className="flex-1 rounded-xl bg-gold py-3 text-sm font-semibold text-primary-foreground hover:bg-gold-soft">{t("common.save")}</button>
           </div>
         </form>
         <style>{`.ip{width:100%;background:oklch(0.13 0.005 60 / 0.6);border:1px solid var(--color-border);border-radius:10px;padding:10px 12px;font-size:14px;color:var(--color-foreground)}.ip:focus{outline:none;border-color:var(--color-gold)}`}</style>
