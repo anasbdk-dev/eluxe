@@ -50,7 +50,6 @@ function MenuPage() {
   const dishesQuery = useQuery({
     queryKey: ["dishes"],
     queryFn: fetchDishes,
-    enabled: !!tableQuery.data,
   });
 
   const [active, setActive] = useState<"all" | Category>("all");
@@ -67,6 +66,7 @@ function MenuPage() {
   useEffect(() => { if (t) sessionStorage.setItem("auralis-token", t); }, [t]);
 
   const table = tableQuery.data;
+  const previewMode = !t;
   const filtered = useMemo(() => {
     const list = dishesQuery.data ?? [];
     const visible = list.filter((d) => d.available && (table?.is_vip || !d.isVipOnly));
@@ -77,9 +77,8 @@ function MenuPage() {
   const totals = calcTotals(cart);
 
   // ---- Gating screens ----
-  if (!t) return <ScanRequired />;
-  if (tableQuery.isLoading) return <Loading />;
-  if (!table || !table.active) return <ScanRequired invalid />;
+  if (t && tableQuery.isLoading) return <Loading />;
+  if (t && (!table || !table.active)) return <ScanRequired invalid />;
 
   return (
     <div className="relative min-h-screen pb-32">
