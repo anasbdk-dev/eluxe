@@ -21,7 +21,7 @@ export function useOrders() {
 
   useEffect(() => {
     const ch = supabase
-      .channel("orders-realtime")
+      .channel(`orders-realtime-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
         qc.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
       })
