@@ -11,10 +11,10 @@ const SECURITY_HEADERS: Record<string, string> = {
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
   "X-XSS-Protection": "1; mode=block",
-  // CSP: tighten 'unsafe-inline' once you move inline styles to classes
+
   "Content-Security-Policy": [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // tighten after audit
+    "script-src 'self' 'unsafe-inline'", // removed unsafe-eval
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https: blob:",
