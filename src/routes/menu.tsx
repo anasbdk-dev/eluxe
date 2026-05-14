@@ -102,8 +102,8 @@ function MenuPage() {
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:px-6">
           <Logo />
           <div className="text-right">
-            <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Now serving</div>
-            <div className="font-display gold-text">{table.name}</div>
+            <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">{previewMode ? "Preview" : "Now serving"}</div>
+            <div className="font-display gold-text">{previewMode ? "Browse Mode" : table?.name}</div>
           </div>
         </div>
         <nav className="border-t hairline">
