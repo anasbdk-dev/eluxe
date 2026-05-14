@@ -82,19 +82,21 @@ function MenuPage() {
 
   return (
     <div className="relative min-h-screen pb-32">
-      <motion.div
-        initial={{ opacity: 1 }}
-        animate={{ opacity: welcome ? 1 : 0, pointerEvents: welcome ? "auto" : "none" }}
-        transition={{ duration: 0.5 }}
-        className="fixed inset-0 z-[60] flex items-center justify-center bg-background"
-      >
-        <div className="text-center">
-          <div className="text-[11px] uppercase tracking-[0.4em] text-gold">Welcome</div>
-          <h1 className="mt-3 font-display text-5xl gold-text">{table.name}</h1>
-          {table.is_vip && <div className="mt-2 text-[10px] uppercase tracking-[0.4em] text-gold-soft">VIP Service</div>}
-          <div className="mx-auto mt-6 h-px w-32 bg-gradient-to-r from-transparent via-gold to-transparent" />
-        </div>
-      </motion.div>
+      {!previewMode && table && (
+        <motion.div
+          initial={{ opacity: 1 }}
+          animate={{ opacity: welcome ? 1 : 0, pointerEvents: welcome ? "auto" : "none" }}
+          transition={{ duration: 0.5 }}
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-background"
+        >
+          <div className="text-center">
+            <div className="text-[11px] uppercase tracking-[0.4em] text-gold">Welcome</div>
+            <h1 className="mt-3 font-display text-5xl gold-text">{table.name}</h1>
+            {table.is_vip && <div className="mt-2 text-[10px] uppercase tracking-[0.4em] text-gold-soft">VIP Service</div>}
+            <div className="mx-auto mt-6 h-px w-32 bg-gradient-to-r from-transparent via-gold to-transparent" />
+          </div>
+        </motion.div>
+      )}
 
       <header className="sticky top-0 z-30 border-b hairline glass-strong">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:px-6">
