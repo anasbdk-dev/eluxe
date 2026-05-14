@@ -8,7 +8,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "AURALIS — The Restaurant Operating System" },
-      { name: "description", content: "Cinematic QR ordering, live kitchen displays, and enterprise analytics for the world's finest restaurants." },
+      { name: "description", content: "QR ordering, live kitchen displays, and enterprise analytics for the world's finest restaurants." },
     ],
   }),
   component: Landing,
