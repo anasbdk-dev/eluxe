@@ -148,7 +148,7 @@ function MenuPage() {
         )}
       </section>
 
-      {totalQty > 0 && (
+      {!previewMode && totalQty > 0 && (
         <button
           onClick={() => setCartOpen(true)}
           className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 sm:bottom-8"
@@ -162,8 +162,8 @@ function MenuPage() {
         </button>
       )}
 
-      <OrderModal dish={selected} onClose={() => setSelected(null)} />
-      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} table={table} />
+      <OrderModal dish={previewMode ? null : selected} onClose={() => setSelected(null)} />
+      {table && <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} table={table} />}
     </div>
   );
 }
