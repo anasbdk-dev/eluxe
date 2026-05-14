@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion, useScroll, useTransform, useSpring, useInView, AnimatePresence } from "framer-motion";
-import { useRef, useEffect, useState, useCallback, useMemo, memo } from "react";
+import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+import { useRef, useCallback, memo } from "react";
 import { ArrowRight, ChefHat, LayoutDashboard, QrCode, Sparkles, Star, Clock, Zap } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { LanguageToggle, useT } from "@/lib/i18n";
@@ -9,675 +9,926 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "AURALIS — The Restaurant Operating System" },
-      { name: "description", content: "Cinematic QR ordering, live kitchen displays, and enterprise analytics for the world's finest restaurants." },
+      {
+        name: "description",
+        content:
+          "Cinematic QR ordering, live kitchen displays, and enterprise analytics for the world's finest restaurants.",
+      },
     ],
   }),
   component: Landing,
 });
 
-// Memoized particle component with will-change
-const Particle = memo(({ x, y, size, delay, duration }: { x: number; y: number; size: number; delay: number; duration: number }) => {
+// ─── Static decorative orb – CSS animation, no JS frame loop ─────────────────
+const GlowOrb = memo(function GlowOrb({
+  style,
+  className = "",
+}: {
+  style: React.CSSProperties;
+  className?: string;
+}) {
+  return <div className={`glow-orb ${className}`} style={style} aria-hidden />;
+});
+
+// ─── Stat card – no animation needed, data is static ─────────────────────────
+const StatCard = memo(function StatCard({
+  value,
+  label,
+  Icon,
+}: {
+  value: string;
+  label: string;
+  Icon: React.ElementType;
+}) {
   return (
-    <motion.div
-      className="absolute rounded-full pointer-events-none will-change-transform"
-      style={{
-        left: `${x}%`,
-        top: `${y}%`,
-        width: size,
-        height: size,
-        background: `radial-gradient(circle, oklch(0.82 0.13 85 / 0.6), oklch(0.82 0.13 85 / 0))`,
-      }}
-      animate={{
-        y: [0, -30, 0],
-        opacity: [0, 1, 0],
-        scale: [0.5, 1.2, 0.5],
-      }}
-      transition={{
-        duration,
-        delay,
-        repeat: Infinity,
-        ease: "easeInOut",
-        repeatDelay: 0,
-      }}
-    />
+    <div className="stat-card">
+      <Icon className="stat-icon" />
+      <div className="stat-value">{value}</div>
+      <div className="stat-label">{label}</div>
+    </div>
   );
 });
-Particle.displayName = "Particle";
 
-// Memoized counter component
-const Counter = memo(({ value, suffix = "" }: { value: string; suffix?: string }) => {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "0px", amount: 0.5 });
+// ─── Feature card – CSS hover transform, no framer-motion per card ───────────
+const FeatureCard = memo(function FeatureCard({
+  icon: Icon,
+  title,
+  body,
+}: {
+  icon: React.ElementType;
+  title: string;
+  body: string;
+}) {
   return (
-    <motion.span
-      ref={ref}
-      initial={{ opacity: 0, y: 10 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6, ease: "easeOut" }}
-    >
-      {value}{suffix}
-    </motion.span>
+    <div className="feature-card">
+      <div className="feature-icon-wrap">
+        <Icon className="feature-icon" />
+      </div>
+      <h3 className="feature-title">{title}</h3>
+      <p className="feature-body">{body}</p>
+    </div>
   );
 });
-Counter.displayName = "Counter";
 
-// Optimized section reveal with reduced motion
-const RevealSection = memo(({ children, className = "" }: { children: React.ReactNode; className?: string }) => {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-80px", amount: 0.2 });
+// ─── Marquee – pure CSS, zero JS ─────────────────────────────────────────────
+const MarqueeTicker = memo(function MarqueeTicker() {
+  const items = [
+    "Omakase",
+    "Fine Dining",
+    "QR Ordering",
+    "Kitchen Display",
+    "Real-time",
+    "Premium",
+    "Michelin",
+    "Luxury",
+    "Enterprise",
+  ];
+  const doubled = [...items, ...items];
   return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 40 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
-});
-RevealSection.displayName = "RevealSection";
-
-// Optimized magnetic button with reduced spring complexity
-const MagneticButton = memo(({ children, className = "", to }: { children: React.ReactNode; className?: string; to: string }) => {
-  const ref = useRef<HTMLAnchorElement>(null);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  const [isAnimating, setIsAnimating] = useState(false);
-
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left - rect.width / 2) * 0.25;
-    const y = (e.clientY - rect.top - rect.height / 2) * 0.25;
-    setPos({ x, y });
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    setPos({ x: 0, y: 0 });
-  }, []);
-
-  return (
-    <motion.div
-      animate={{ x: pos.x, y: pos.y }}
-      transition={{ type: "spring", stiffness: 500, damping: 25, mass: 0.5 }}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-    >
-      <Link ref={ref} to={to} className={className}>
-        {children}
-      </Link>
-    </motion.div>
-  );
-});
-MagneticButton.displayName = "MagneticButton";
-
-// Optimized glow orb with reduced animation frequency
-const GlowOrb = memo(({ x, y, size, color }: { x: string; y: string; size: number; color: string }) => {
-  return (
-    <motion.div
-      className="absolute rounded-full pointer-events-none blur-3xl will-change-transform"
-      style={{ left: x, top: y, width: size, height: size, background: color }}
-      animate={{
-        scale: [1, 1.15, 1],
-        opacity: [0.25, 0.45, 0.25],
-      }}
-      transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", repeatDelay: 0 }}
-    />
-  );
-});
-GlowOrb.displayName = "GlowOrb";
-
-// Optimized feature card with reduced tilt sensitivity
-const FeatureCard = memo(({ icon: Icon, title, body, index }: { icon: any; title: string; body: string; index: number }) => {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-60px", amount: 0.2 });
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
-  const [isHovering, setIsHovering] = useState(false);
-
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isHovering) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientY - rect.top) / rect.height - 0.5) * 8;
-    const y = -((e.clientX - rect.left) / rect.width - 0.5) * 8;
-    setTilt({ x, y });
-  }, [isHovering]);
-
-  const handleMouseLeave = useCallback(() => {
-    setIsHovering(false);
-    setTilt({ x: 0, y: 0 });
-  }, []);
-
-  const handleMouseEnter = useCallback(() => {
-    setIsHovering(true);
-  }, []);
-
-  return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 60, rotateX: 8 }}
-      animate={inView ? { opacity: 1, y: 0, rotateX: 0 } : {}}
-      transition={{ duration: 0.7, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
-      style={{ perspective: 800 }}
-    >
-      <motion.div
-        animate={{ rotateX: tilt.x, rotateY: tilt.y }}
-        transition={{ type: "spring", stiffness: 400, damping: 35 }}
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        onMouseEnter={handleMouseEnter}
-        className="rounded-3xl glass p-8 hover:gold-glow transition-all duration-300 cursor-default group relative overflow-hidden h-full will-change-transform"
-      >
-        <motion.div
-          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-          style={{
-            background: "linear-gradient(135deg, oklch(0.82 0.13 85 / 0.04) 0%, transparent 60%, oklch(0.82 0.13 85 / 0.02) 100%)",
-          }}
-        />
-        <motion.div
-          whileHover={{ scale: 1.08, rotate: 4 }}
-          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-          className="h-12 w-12 rounded-2xl bg-gold/10 grid place-items-center text-gold mb-6"
-        >
-          <Icon className="h-6 w-6" />
-        </motion.div>
-        <h3 className="font-display text-2xl mb-3 group-hover:gold-text transition-all duration-300">{title}</h3>
-        <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>
-      </motion.div>
-    </motion.div>
-  );
-});
-FeatureCard.displayName = "FeatureCard";
-
-// Memoized marquee ticker with reduced animation overhead
-const MarqueeTicker = memo(() => {
-  const items = useMemo(() => ["Omakase", "Fine Dining", "QR Ordering", "Kitchen Display", "Real-time", "Premium", "Michelin", "Luxury", "Enterprise"], []);
-  
-  return (
-    <div className="relative overflow-hidden py-4 border-y hairline my-0">
-      <motion.div
-        className="flex gap-12 whitespace-nowrap"
-        animate={{ x: ["0%", "-50%"] }}
-        transition={{ duration: 25, repeat: Infinity, ease: "linear", repeatType: "loop" }}
-      >
-        {[...items, ...items].map((item, i) => (
-          <span key={i} className="text-[11px] uppercase tracking-[0.4em] text-muted-foreground/50 flex items-center gap-3">
-            <span className="w-1 h-1 rounded-full bg-gold/40 inline-block" />
+    <div className="marquee-wrap" aria-hidden>
+      <div className="marquee-track">
+        {doubled.map((item, i) => (
+          <span key={i} className="marquee-item">
+            <span className="marquee-dot" />
             {item}
           </span>
         ))}
-      </motion.div>
+      </div>
     </div>
   );
 });
-MarqueeTicker.displayName = "MarqueeTicker";
 
-// Stat item component
-const StatItem = memo(({ value, label, icon: Icon, delay }: { value: string; label: string; icon: any; delay: number }) => {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "0px", amount: 0.5 });
-  
+// ─── Hero card – single motion.div for the whole card ────────────────────────
+const HeroCard = memo(function HeroCard({ t }: { t: (k: string) => string }) {
   return (
     <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 20 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ delay, duration: 0.5 }}
-      className="bg-card/30 p-8 text-center group hover:bg-gold/5 transition-colors"
+      initial={{ opacity: 0, x: 60 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 1, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="hero-card"
     >
-      <Icon className="h-5 w-5 text-gold/40 mx-auto mb-3 group-hover:text-gold transition-colors" />
-      <div className="font-display text-4xl gold-text">
-        <Counter value={value} />
+      <div className="hero-card-header">
+        <div className="hero-card-tag">{t("landing.tonight")}</div>
+        <div className="hero-card-live-dot" />
       </div>
-      <div className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground mt-1">{label}</div>
+      <div className="hero-card-title">{t("landing.omakase")}</div>
+      <p className="hero-card-body">{t("landing.omakaseBody")}</p>
+      <div className="hero-card-stats">
+        {[
+          ["18+", t("landing.courses")],
+          ["96%", t("landing.returning")],
+          ["★ 1", t("landing.michelin")],
+        ].map(([n, l]) => (
+          <div key={l} className="hero-stat">
+            <div className="hero-stat-num">{n}</div>
+            <div className="hero-stat-label">{l}</div>
+          </div>
+        ))}
+      </div>
+      <div className="hero-card-footer">
+        <div className="hero-pulse-dot" />
+        <span className="hero-pulse-text">
+          <span className="hero-pulse-gold">12 tables</span> active right now
+        </span>
+        <span className="hero-live-badge">Live</span>
+      </div>
     </motion.div>
   );
 });
-StatItem.displayName = "StatItem";
 
-// Main Landing Component
+// ─── Main component ───────────────────────────────────────────────────────────
 export default function Landing() {
   const { t } = useT();
-  const heroRef = useRef(null);
-  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
-  const [isLowEndDevice, setIsLowEndDevice] = useState(false);
+  const heroRef = useRef<HTMLElement>(null);
 
-  // Detect low-end devices for performance optimization
-  useEffect(() => {
-    const checkPerformance = () => {
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      const hasLowMemory = 'deviceMemory' in navigator ? (navigator as any).deviceMemory < 4 : false;
-      setIsLowEndDevice(isMobile || hasLowMemory);
-    };
-    checkPerformance();
-  }, []);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
 
-  const springConfig = useMemo(() => ({ stiffness: 120, damping: 35, restDelta: 0.001 }), []);
-  const heroY = useSpring(useTransform(scrollYProgress, [0, 1], [0, 120]), springConfig);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
-  const titleY = useSpring(useTransform(scrollYProgress, [0, 1], [0, 80]), springConfig);
+  // Only GPU-composited properties: opacity + transform (translateY/scale)
+  const springCfg = { stiffness: 80, damping: 25, restDelta: 0.001 };
+  const heroY = useSpring(useTransform(scrollYProgress, [0, 1], [0, 160]), springCfg);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.65], [1, 0]);
+  const heroScale = useTransform(scrollYProgress, [0, 0.65], [1, 0.94]);
 
-  // Memoized particles with fewer particles on mobile
-  const particles = useMemo(() => {
-    const count = isLowEndDevice ? 6 : 12;
-    return Array.from({ length: count }, () => ({
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 3 + 2,
-      delay: Math.random() * 3,
-      duration: Math.random() * 4 + 5,
-    }));
-  }, [isLowEndDevice]);
-
-  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
-
-  // Throttled mouse move handler
-  useEffect(() => {
-    let rafId: number | null = null;
-    const handleMouseMove = (e: MouseEvent) => {
-      if (rafId) return;
-      rafId = requestAnimationFrame(() => {
-        setCursorPos({ x: e.clientX, y: e.clientY });
-        rafId = null;
-      });
-    };
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      if (rafId) cancelAnimationFrame(rafId);
-    };
-  }, []);
-
-  const heroLines = useMemo(() => ["landing.heroLine1", "landing.heroLine2", "landing.heroLine3", "landing.heroLine4"], []);
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const el = e.currentTarget;
+      el.style.setProperty("--mx", `${e.clientX}px`);
+      el.style.setProperty("--my", `${e.clientY}px`);
+    },
+    [],
+  );
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden" style={{ scrollBehavior: "smooth" }}>
-      {/* Custom cursor glow - hidden on low-end devices */}
-      {!isLowEndDevice && (
-        <motion.div
-          className="fixed pointer-events-none z-[100] rounded-full mix-blend-screen will-change-transform"
-          style={{
-            width: 400,
-            height: 400,
-            background: "radial-gradient(circle, oklch(0.82 0.13 85 / 0.05), transparent 70%)",
-            x: cursorPos.x - 200,
-            y: cursorPos.y - 200,
-          }}
-          transition={{ type: "spring", stiffness: 300, damping: 50, mass: 0.5 }}
-        />
-      )}
+    <>
+      {/* Perf-critical CSS injected once */}
+      <style>{CSS}</style>
 
-      {/* ── NAVBAR ── */}
-      <motion.header
-        initial={{ y: -80, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="fixed inset-x-0 top-0 z-40 border-b hairline glass-strong"
-      >
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <Logo />
-          <nav className="hidden items-center gap-8 text-sm md:flex">
-            {["experience", "reserve"].map((item, i) => (
-              <motion.div
-                key={item}
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 + i * 0.08 }}
-              >
-                {item === "reserve" ? (
-                  <Link to="/reserve" className="text-muted-foreground hover:text-gold transition-colors">
-                    {t("landing.reserve")}
-                  </Link>
-                ) : (
-                  <a href="#experience" className="text-muted-foreground hover:text-gold transition-colors">
-                    {t("landing.experience")}
-                  </a>
-                )}
-              </motion.div>
-            ))}
-          </nav>
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4 }}
-            className="flex items-center gap-2"
-          >
-            <LanguageToggle />
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 rounded-full border hairline px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-secondary hover:border-gold/40 transition-all"
-            >
-              {t("landing.staffSignIn")} <ArrowRight className="h-3 w-3" />
-            </Link>
-          </motion.div>
-        </div>
-      </motion.header>
+      <div className="page-root" onMouseMove={handleMouseMove}>
+        {/* Cursor glow: pure CSS var-driven, no JS animation frame */}
+        <div className="cursor-glow" aria-hidden />
 
-      {/* ── HERO ── */}
-      <section
-        ref={heroRef}
-        className="relative isolate flex min-h-screen items-center px-6 pt-24 overflow-hidden"
-      >
-        {/* Background orbs - fewer on low-end */}
-        <div className="absolute inset-0 -z-10 overflow-hidden">
-          {!isLowEndDevice && (
-            <>
-              <GlowOrb x="10%" y="20%" size={500} color="oklch(0.82 0.13 85 / 0.1)" />
-              <GlowOrb x="70%" y="60%" size={400} color="oklch(0.62 0.13 70 / 0.06)" />
-            </>
-          )}
-          <GlowOrb x="40%" y="80%" size={300} color="oklch(0.82 0.13 85 / 0.05)" />
-
-          {/* Animated grid - reduced opacity */}
-          <div
-            className="absolute inset-0 opacity-[0.02]"
-            style={{
-              backgroundImage: `linear-gradient(oklch(0.82 0.13 85) 1px, transparent 1px), linear-gradient(90deg, oklch(0.82 0.13 85) 1px, transparent 1px)`,
-              backgroundSize: "60px 60px",
-            }}
-          />
-
-          {/* Floating particles - fewer on low-end */}
-          {particles.map((p, i) => (
-            <Particle key={i} {...p} />
-          ))}
-
-          <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/20 to-background" />
-        </div>
-
-        <div className="mx-auto grid w-full max-w-7xl gap-12 lg:grid-cols-[1.2fr_1fr] lg:items-center">
-          {/* Hero text */}
-          <motion.div style={{ y: titleY, opacity: heroOpacity }}>
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.7 }}
-              className="inline-flex items-center gap-2 rounded-full border hairline glass px-4 py-1.5 text-[11px] uppercase tracking-[0.3em] text-gold mb-6"
-            >
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-              >
-                <Sparkles className="h-3 w-3" />
-              </motion.div>
-              {t("landing.tagline")}
-            </motion.div>
-
-            <h1 className="font-display text-[clamp(2.5rem,8vw,6rem)] leading-[0.95] text-balance">
-              {heroLines.map((key, i) => (
-                <motion.span
-                  key={key}
-                  initial={{ opacity: 0, y: 30, rotateX: 15 }}
-                  animate={{ opacity: 1, y: 0, rotateX: 0 }}
-                  transition={{ duration: 0.7, delay: 0.1 + i * 0.1, ease: [0.22, 1, 0.36, 1] }}
-                  className="block will-change-transform"
-                  style={{ transformOrigin: "left center", perspective: 600 }}
-                >
-                  {key === "landing.heroLine2" ? (
-                    <span className="gold-text italic relative">
-                      {t(key)}
-                      <motion.span
-                        className="absolute -inset-x-2 bottom-1 h-px bg-gradient-to-r from-transparent via-gold to-transparent"
-                        initial={{ scaleX: 0 }}
-                        animate={{ scaleX: 1 }}
-                        transition={{ duration: 0.8, delay: 0.6 }}
-                      />
-                    </span>
-                  ) : (
-                    t(key)
-                  )}
-                </motion.span>
-              ))}
-            </h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.5 }}
-              className="mt-8 max-w-xl text-base leading-relaxed text-muted-foreground"
-            >
-              {t("landing.heroBody")}
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.65 }}
-              className="mt-10 flex flex-wrap items-center gap-3"
-            >
-              <MagneticButton
-                to="/menu"
-                className="inline-flex items-center gap-3 rounded-full bg-gold px-6 py-3.5 text-sm font-semibold uppercase tracking-[0.2em] text-primary-foreground hover:bg-gold-soft transition-all hover:shadow-[0_12px_40px_-12px_oklch(0.82_0.13_85_/_0.6)] active:scale-95"
-              >
-                {t("landing.exploreMenu")}
-                <motion.span animate={{ x: [0, 4, 0] }} transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 0 }}>
-                  <ArrowRight className="h-4 w-4" />
-                </motion.span>
-              </MagneticButton>
-
-              <Link
-                to="/reserve"
-                className="inline-flex items-center gap-2 rounded-full border hairline px-6 py-3.5 text-sm font-medium hover:bg-secondary hover:border-gold/30 transition-all"
-              >
-                {t("landing.reserveTable")}
-              </Link>
-              <Link
-                to="/login"
-                className="inline-flex items-center gap-2 rounded-full border hairline px-6 py-3.5 text-sm font-medium hover:bg-secondary transition-all"
-              >
-                {t("landing.staffPortal")}
-              </Link>
-            </motion.div>
-
-            {/* Social proof */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.9 }}
-              className="mt-10 flex items-center gap-4"
-            >
-              <div className="flex -space-x-2">
-                {["#c4a77d", "#b8936a", "#d4b896", "#a07850"].map((c, i) => (
-                  <div key={i} className="h-8 w-8 rounded-full border-2 border-background" style={{ background: `linear-gradient(135deg, ${c}, oklch(0.13 0.005 60))` }} />
-                ))}
-              </div>
-              <span className="text-xs text-muted-foreground">
-                Trusted by <span className="text-gold">500+</span> luxury restaurants
-              </span>
-            </motion.div>
-          </motion.div>
-
-          {/* Hero card - simplified animation */}
-          <motion.div
-            initial={{ opacity: 0, x: 40, rotateY: -10 }}
-            animate={{ opacity: 1, x: 0, rotateY: 0 }}
-            transition={{ duration: 0.9, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            style={{ y: heroY, perspective: 800 }}
-            className="hidden lg:block"
-          >
-            <motion.div
-              whileHover={{ rotateY: -3, rotateX: 2, scale: 1.02 }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="space-y-3 rounded-3xl glass-strong p-6 gold-border gold-glow relative overflow-hidden"
-            >
-              <div className="flex items-center justify-between">
-                <div className="text-[10px] uppercase tracking-[0.3em] text-gold">{t("landing.tonight")}</div>
-                <motion.div
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ duration: 2.5, repeat: Infinity }}
-                  className="h-2 w-2 rounded-full bg-emerald-400"
-                />
-              </div>
-
-              <div className="font-display text-3xl">{t("landing.omakase")}</div>
-              <p className="text-sm text-muted-foreground">{t("landing.omakaseBody")}</p>
-
-              <div className="grid grid-cols-3 gap-3 pt-3 text-center">
-                {[
-                  ["18+", t("landing.courses"), "★"],
-                  ["96%", t("landing.returning"), "↑"],
-                  ["★ 1", t("landing.michelin"), "✦"],
-                ].map(([n, l, icon], i) => (
-                  <motion.div
-                    key={l}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.7 + i * 0.08 }}
-                    whileHover={{ y: -3, scale: 1.03 }}
-                    className="rounded-2xl border hairline bg-background/40 px-3 py-3 cursor-default transition-all"
-                  >
-                    <div className="font-display text-xl gold-text">{n}</div>
-                    <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{l}</div>
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* Live orders indicator */}
-              <div className="mt-2 rounded-xl bg-background/40 p-3 flex items-center gap-3">
-                <div className="relative">
-                  <div className="h-3 w-3 rounded-full bg-gold" />
-                  <motion.div
-                    className="absolute inset-0 rounded-full bg-gold"
-                    animate={{ scale: [1, 2.5], opacity: [0.5, 0] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  />
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  <span className="text-gold font-medium">12 tables</span> active right now
-                </span>
-                <span className="ms-auto text-[10px] uppercase tracking-wider text-gold/60">Live</span>
-              </div>
-            </motion.div>
-          </motion.div>
-        </div>
-
-        {/* Scroll indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.2 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+        {/* ── NAV ─────────────────────────────────────────────────────────── */}
+        <motion.header
+          initial={{ y: -72, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className="nav-bar"
         >
-          <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground/40">Scroll</span>
-          <motion.div
-            className="w-px h-10 bg-gradient-to-b from-gold/40 to-transparent"
-            animate={{ scaleY: [0.3, 1, 0.3], opacity: [0.4, 1, 0.4] }}
-            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-          />
-        </motion.div>
-      </section>
-
-      {/* ── MARQUEE ── */}
-      <MarqueeTicker />
-
-      {/* ── STATS BAR ── */}
-      <RevealSection className="py-16 px-6">
-        <div className="mx-auto max-w-7xl">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border/30 rounded-2xl overflow-hidden">
-            <StatItem value="500+" label="Restaurants" icon={Star} delay={0} />
-            <StatItem value="2M+" label="Orders Served" icon={ChefHat} delay={0.1} />
-            <StatItem value="99.9%" label="Uptime" icon={Zap} delay={0.2} />
-            <StatItem value="&lt;200ms" label="Response Time" icon={Clock} delay={0.3} />
+          <div className="nav-inner">
+            <Logo />
+            <nav className="nav-links">
+              <a href="#experience" className="nav-link">
+                {t("landing.experience")}
+              </a>
+              <Link to="/reserve" className="nav-link">
+                {t("landing.reserve")}
+              </Link>
+            </nav>
+            <div className="nav-right">
+              <LanguageToggle />
+              <Link to="/login" className="nav-cta">
+                {t("landing.staffSignIn")} <ArrowRight className="nav-cta-icon" />
+              </Link>
+            </div>
           </div>
-        </div>
-      </RevealSection>
+        </motion.header>
 
-      {/* ── EXPERIENCE / FEATURES ── */}
-      <section id="experience" className="relative px-6 py-24 overflow-hidden">
-        <div className="absolute inset-0 -z-10">
-          {!isLowEndDevice && (
-            <>
-              <GlowOrb x="80%" y="20%" size={450} color="oklch(0.82 0.13 85 / 0.04)" />
-              <GlowOrb x="5%" y="70%" size={350} color="oklch(0.62 0.13 70 / 0.04)" />
-            </>
-          )}
-        </div>
-
-        <div className="mx-auto max-w-7xl">
-          <RevealSection className="mb-12 max-w-2xl">
-            <div className="text-[11px] uppercase tracking-[0.3em] text-gold mb-3">{t("landing.experienceTag")}</div>
-            <h2 className="font-display text-4xl md:text-5xl leading-tight">{t("landing.experienceTitle")}</h2>
-            <p className="mt-4 text-muted-foreground max-w-lg">
-              Every component of AURALIS is engineered for the world's finest establishments.
-            </p>
-          </RevealSection>
-
-          <div className="grid gap-5 md:grid-cols-3">
-            <FeatureCard icon={QrCode} title={t("landing.qrTitle")} body={t("landing.qrBody")} index={0} />
-            <FeatureCard icon={ChefHat} title={t("landing.kitchenTitle")} body={t("landing.kitchenBody")} index={1} />
-            <FeatureCard icon={LayoutDashboard} title={t("landing.adminTitle")} body={t("landing.adminBody")} index={2} />
+        {/* ── HERO ────────────────────────────────────────────────────────── */}
+        <section ref={heroRef} className="hero-section">
+          {/* Static bg – no animated orbs in hero, just CSS gradient layers */}
+          <div className="hero-bg" aria-hidden>
+            <GlowOrb style={{ left: "8%", top: "18%", width: 560, height: 560, animationDelay: "0s" }} />
+            <GlowOrb style={{ left: "68%", top: "55%", width: 440, height: 440, animationDelay: "-3s" }} />
+            <div className="hero-grid" />
+            <div className="hero-fade" />
           </div>
-        </div>
-      </section>
 
-      {/* ── TONIGHT SECTION ── */}
-      <RevealSection className="px-6 py-20">
-        <div className="mx-auto max-w-7xl">
-          <motion.div
-            className="rounded-3xl overflow-hidden relative p-10 md:p-16 text-center"
-            style={{
-              background: "linear-gradient(135deg, oklch(0.18 0.012 80 / 0.8), oklch(0.14 0.01 70 / 0.9), oklch(0.18 0.015 85 / 0.8))",
-              border: "1px solid oklch(0.82 0.13 85 / 0.12)",
-              boxShadow: "0 0 60px oklch(0.82 0.13 85 / 0.06), inset 0 0 60px oklch(0.13 0.005 60 / 0.4)",
-            }}
-          >
-            <div
-              className="absolute inset-0 opacity-[0.02] pointer-events-none"
-              style={{
-                backgroundImage: "radial-gradient(circle, oklch(0.82 0.13 85) 1px, transparent 1px)",
-                backgroundSize: "32px 32px",
-              }}
-            />
-
+          <div className="hero-inner">
+            {/* Text block */}
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              whileInView={{ scale: 1, opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+              style={{ y: heroY, opacity: heroOpacity, scale: heroScale }}
+              className="hero-text"
             >
-              <div className="text-[11px] uppercase tracking-[0.4em] text-gold mb-4">{t("landing.tonight")}</div>
-              <h3 className="font-display text-4xl md:text-5xl mb-4">{t("landing.omakase")}</h3>
-              <p className="text-muted-foreground max-w-xl mx-auto mb-8">{t("landing.omakaseBody")}</p>
+              {/* Tag */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="hero-tag"
+              >
+                <Sparkles className="hero-tag-icon" />
+                {t("landing.tagline")}
+              </motion.div>
 
-              <div className="flex flex-wrap gap-4 justify-center">
-                <Link
-                  to="/menu"
-                  className="inline-flex items-center gap-3 rounded-full bg-gold px-7 py-3.5 text-sm font-semibold uppercase tracking-[0.2em] text-primary-foreground hover:bg-gold-soft transition-all hover:shadow-[0_12px_40px_-12px_oklch(0.82_0.13_85_/_0.7)]"
-                >
-                  {t("landing.exploreMenu")} <ArrowRight className="h-4 w-4" />
+              {/* Headline – staggered but lightweight */}
+              <h1 className="hero-headline">
+                {(["landing.heroLine1", "landing.heroLine2", "landing.heroLine3", "landing.heroLine4"] as const).map(
+                  (key, i) => (
+                    <motion.span
+                      key={key}
+                      initial={{ opacity: 0, y: 32 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.75, delay: 0.15 + i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                      className={`hero-line ${key === "landing.heroLine2" ? "hero-line-gold" : ""}`}
+                    >
+                      {t(key)}
+                      {key === "landing.heroLine2" && (
+                        <motion.span
+                          className="hero-underline"
+                          initial={{ scaleX: 0 }}
+                          animate={{ scaleX: 1 }}
+                          transition={{ duration: 0.8, delay: 0.6 }}
+                        />
+                      )}
+                    </motion.span>
+                  ),
+                )}
+              </h1>
+
+              <motion.p
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.55 }}
+                className="hero-body"
+              >
+                {t("landing.heroBody")}
+              </motion.p>
+
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.7 }}
+                className="hero-ctas"
+              >
+                <Link to="/menu" className="btn-primary">
+                  {t("landing.exploreMenu")}
+                  <ArrowRight className="btn-icon" />
                 </Link>
-                <Link
-                  to="/reserve"
-                  className="inline-flex items-center gap-2 rounded-full border hairline px-7 py-3.5 text-sm font-medium hover:bg-white/5 transition-all"
-                >
+                <Link to="/reserve" className="btn-ghost">
+                  {t("landing.reserveTable")}
+                </Link>
+                <Link to="/login" className="btn-ghost">
+                  {t("landing.staffPortal")}
+                </Link>
+              </motion.div>
+
+              {/* Social proof */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.9 }}
+                className="social-proof"
+              >
+                <div className="avatar-row">
+                  {["#c4a77d", "#b8936a", "#d4b896", "#a07850"].map((c, i) => (
+                    <div key={i} className="avatar" style={{ background: `linear-gradient(135deg,${c},#1a1714)` }} />
+                  ))}
+                </div>
+                <span className="social-proof-text">
+                  Trusted by <span className="social-proof-gold">500+</span> luxury restaurants
+                </span>
+              </motion.div>
+            </motion.div>
+
+            {/* Hero card – desktop only */}
+            <div className="hero-card-wrap">
+              <HeroCard t={t} />
+            </div>
+          </div>
+
+          {/* Scroll indicator */}
+          <div className="scroll-indicator" aria-hidden>
+            <span className="scroll-label">Scroll</span>
+            <div className="scroll-line" />
+          </div>
+        </section>
+
+        {/* ── MARQUEE ─────────────────────────────────────────────────────── */}
+        <MarqueeTicker />
+
+        {/* ── STATS ───────────────────────────────────────────────────────── */}
+        <section className="stats-section">
+          <div className="stats-grid">
+            <StatCard value="500+" label="Restaurants" Icon={Star} />
+            <StatCard value="2M+" label="Orders Served" Icon={ChefHat} />
+            <StatCard value="99.9%" label="Uptime" Icon={Zap} />
+            <StatCard value="<200ms" label="Response Time" Icon={Clock} />
+          </div>
+        </section>
+
+        {/* ── FEATURES ────────────────────────────────────────────────────── */}
+        <section id="experience" className="features-section">
+          <div className="features-inner">
+            <div className="features-header">
+              <div className="section-tag">{t("landing.experienceTag")}</div>
+              <h2 className="section-title">{t("landing.experienceTitle")}</h2>
+              <p className="section-body">
+                Every component of AURALIS is engineered for the demands of the world's finest
+                establishments.
+              </p>
+            </div>
+            <div className="features-grid">
+              <FeatureCard icon={QrCode} title={t("landing.qrTitle")} body={t("landing.qrBody")} />
+              <FeatureCard icon={ChefHat} title={t("landing.kitchenTitle")} body={t("landing.kitchenBody")} />
+              <FeatureCard icon={LayoutDashboard} title={t("landing.adminTitle")} body={t("landing.adminBody")} />
+            </div>
+          </div>
+        </section>
+
+        {/* ── TONIGHT CTA ─────────────────────────────────────────────────── */}
+        <section className="tonight-section">
+          <div className="tonight-inner">
+            <div className="tonight-card">
+              <div className="tonight-bg" aria-hidden />
+              <div className="section-tag">{t("landing.tonight")}</div>
+              <h3 className="tonight-title">{t("landing.omakase")}</h3>
+              <p className="tonight-body">{t("landing.omakaseBody")}</p>
+              <div className="tonight-ctas">
+                <Link to="/menu" className="btn-primary">
+                  {t("landing.exploreMenu")} <ArrowRight className="btn-icon" />
+                </Link>
+                <Link to="/reserve" className="btn-ghost">
                   {t("landing.reserveTable")}
                 </Link>
               </div>
-            </motion.div>
-          </motion.div>
-        </div>
-      </RevealSection>
-
-      {/* ── FOOTER ── */}
-      <footer className="border-t hairline px-6 py-10 relative overflow-hidden">
-        <motion.div
-          className="absolute inset-x-0 top-0 h-px"
-          style={{ background: "linear-gradient(90deg, transparent, oklch(0.82 0.13 85 / 0.35), transparent)" }}
-          animate={{ opacity: [0.4, 1, 0.4] }}
-          transition={{ duration: 4, repeat: Infinity }}
-        />
-        <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between gap-4">
-          <Logo />
-          <p className="text-xs text-muted-foreground text-center">
-            © {new Date().getFullYear()} {t("landing.footer")}
-          </p>
-          <div className="flex gap-4 text-xs text-muted-foreground/40">
-            <Link to="/login" className="hover:text-gold transition-colors">Staff Portal</Link>
-            <Link to="/reserve" className="hover:text-gold transition-colors">Reserve</Link>
-            <Link to="/menu" className="hover:text-gold transition-colors">Menu</Link>
+            </div>
           </div>
-        </div>
-      </footer>
-    </div>
+        </section>
+
+        {/* ── FOOTER ──────────────────────────────────────────────────────── */}
+        <footer className="site-footer">
+          <div className="footer-inner">
+            <Logo />
+            <p className="footer-copy">© {new Date().getFullYear()} {t("landing.footer")}</p>
+            <div className="footer-links">
+              <Link to="/login" className="footer-link">Staff Portal</Link>
+              <Link to="/reserve" className="footer-link">Reserve</Link>
+              <Link to="/menu" className="footer-link">Menu</Link>
+            </div>
+          </div>
+        </footer>
+      </div>
+    </>
   );
 }
+
+// ─── All CSS in one string – injected once, parsed once ──────────────────────
+const CSS = `
+/* Reset & base */
+.page-root {
+  position: relative;
+  min-height: 100svh;
+  overflow-x: hidden;
+  --mx: 50vw;
+  --my: 50vh;
+}
+
+/* Cursor glow – driven by CSS vars set via onMouseMove, NO animation frame */
+.cursor-glow {
+  position: fixed;
+  pointer-events: none;
+  z-index: 100;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  background: radial-gradient(circle, oklch(0.82 0.13 85 / 0.055), transparent 70%);
+  mix-blend-mode: screen;
+  left: calc(var(--mx) - 210px);
+  top: calc(var(--my) - 210px);
+  /* transform driven by CSS, no JS rAF */
+  will-change: left, top;
+  transition: left 0.12s linear, top 0.12s linear;
+}
+
+/* Glow orb – CSS keyframe, GPU composited */
+.glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, oklch(0.82 0.13 85 / 0.11), oklch(0.62 0.13 70 / 0.04), transparent 70%);
+  filter: blur(60px);
+  will-change: transform, opacity;
+  animation: orbPulse 7s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes orbPulse {
+  0%,100% { transform: scale(1); opacity: 0.6; }
+  50%      { transform: scale(1.18); opacity: 0.85; }
+}
+
+/* Nav */
+.nav-bar {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 40;
+  border-bottom: 1px solid oklch(0.82 0.13 85 / 0.18);
+  background: linear-gradient(180deg, oklch(0.18 0.006 60 / 0.85), oklch(0.13 0.005 60 / 0.7));
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+}
+.nav-inner {
+  margin: 0 auto;
+  max-width: 80rem;
+  display: flex;
+  height: 4rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+}
+.nav-links {
+  display: none;
+  align-items: center;
+  gap: 2rem;
+  font-size: 0.875rem;
+}
+@media (min-width: 768px) { .nav-links { display: flex; } }
+.nav-link {
+  color: oklch(0.65 0.012 80);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.nav-link:hover { color: oklch(0.82 0.13 85); }
+.nav-right { display: flex; align-items: center; gap: 0.5rem; }
+.nav-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid oklch(0.82 0.13 85 / 0.18);
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.2s, border-color 0.2s;
+}
+.nav-cta:hover { background: oklch(0.22 0.008 60); border-color: oklch(0.82 0.13 85 / 0.4); }
+.nav-cta-icon { width: 0.75rem; height: 0.75rem; }
+
+/* Hero */
+.hero-section {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  min-height: 100svh;
+  align-items: center;
+  padding: 6rem 1.5rem 4rem;
+  overflow: hidden;
+}
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.028;
+  background-image:
+    linear-gradient(oklch(0.82 0.13 85) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.82 0.13 85) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+.hero-fade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 60%, oklch(0.13 0.005 60));
+}
+.hero-inner {
+  margin: 0 auto;
+  display: grid;
+  width: 100%;
+  max-width: 80rem;
+  gap: 4rem;
+}
+@media (min-width: 1024px) {
+  .hero-inner { grid-template-columns: 1.2fr 1fr; align-items: center; }
+}
+.hero-text { display: flex; flex-direction: column; gap: 0; }
+
+/* Hero tag */
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid oklch(0.82 0.13 85 / 0.18);
+  background: linear-gradient(180deg, oklch(1 0 0 / 0.04), oklch(1 0 0 / 0.01));
+  backdrop-filter: blur(18px);
+  padding: 0.375rem 1rem;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  color: oklch(0.82 0.13 85);
+  width: fit-content;
+  margin-bottom: 1.5rem;
+}
+.hero-tag-icon { width: 0.75rem; height: 0.75rem; }
+
+/* Headline */
+.hero-headline {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 8vw, 7rem);
+  line-height: 0.93;
+  margin: 0 0 2rem;
+}
+.hero-line { display: block; }
+.hero-line-gold {
+  font-style: italic;
+  background: linear-gradient(135deg, oklch(0.92 0.09 88) 0%, oklch(0.82 0.13 85) 50%, oklch(0.62 0.13 70) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  position: relative;
+}
+.hero-underline {
+  display: block;
+  position: absolute;
+  bottom: 4px;
+  left: -8px;
+  right: -8px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, oklch(0.82 0.13 85), transparent);
+  transform-origin: left;
+}
+
+.hero-body {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: oklch(0.65 0.012 80);
+  max-width: 36rem;
+  margin: 0 0 2.5rem;
+}
+.hero-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 2.5rem;
+}
+
+/* Buttons */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 9999px;
+  background: oklch(0.82 0.13 85);
+  padding: 1rem 1.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: oklch(0.13 0.005 60);
+  text-decoration: none;
+  transition: background 0.2s, box-shadow 0.3s, transform 0.15s;
+  will-change: transform;
+}
+.btn-primary:hover {
+  background: oklch(0.88 0.09 88);
+  box-shadow: 0 12px 40px -12px oklch(0.82 0.13 85 / 0.65);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: translateY(0); }
+.btn-icon { width: 1rem; height: 1rem; flex-shrink: 0; }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid oklch(0.28 0.012 80 / 0.6);
+  padding: 1rem 1.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.2s, border-color 0.2s;
+}
+.btn-ghost:hover { background: oklch(0.22 0.008 60); border-color: oklch(0.82 0.13 85 / 0.3); }
+
+/* Social proof */
+.social-proof { display: flex; align-items: center; gap: 1rem; }
+.avatar-row { display: flex; }
+.avatar {
+  width: 2rem; height: 2rem;
+  border-radius: 50%;
+  border: 2px solid oklch(0.13 0.005 60);
+  margin-left: -0.5rem;
+}
+.avatar:first-child { margin-left: 0; }
+.social-proof-text { font-size: 0.75rem; color: oklch(0.65 0.012 80); }
+.social-proof-gold { color: oklch(0.82 0.13 85); }
+
+/* Hero card */
+.hero-card-wrap { display: none; }
+@media (min-width: 1024px) { .hero-card-wrap { display: block; } }
+.hero-card {
+  border-radius: 1.5rem;
+  background: linear-gradient(180deg, oklch(0.18 0.006 60 / 0.85), oklch(0.13 0.005 60 / 0.7));
+  backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid oklch(0.82 0.13 85 / 0.12);
+  box-shadow: 0 0 0 1px oklch(0.82 0.13 85 / 0.2), 0 20px 60px -20px oklch(0.82 0.13 85 / 0.35);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  /* CSS shimmer on hover – no JS */
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s ease;
+}
+.hero-card:hover { transform: translateY(-4px) rotateY(-3deg); }
+.hero-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, oklch(0.82 0.13 85 / 0.05), transparent 50%);
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+}
+.hero-card:hover::after { opacity: 1; }
+
+.hero-card-header { display: flex; align-items: center; justify-content: space-between; }
+.hero-card-tag {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  color: oklch(0.82 0.13 85);
+}
+.hero-card-live-dot {
+  width: 0.5rem; height: 0.5rem;
+  border-radius: 50%;
+  background: oklch(0.72 0.19 145);
+  /* CSS pulse ring */
+  position: relative;
+}
+.hero-card-live-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px solid oklch(0.72 0.19 145 / 0.5);
+  animation: livePing 1.6s ease-out infinite;
+}
+@keyframes livePing {
+  0%   { transform: scale(1); opacity: 0.7; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.hero-card-title { font-family: var(--font-display); font-size: 1.875rem; }
+.hero-card-body { font-size: 0.875rem; color: oklch(0.65 0.012 80); }
+.hero-card-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+.hero-stat {
+  border-radius: 1rem;
+  border: 1px solid oklch(0.82 0.13 85 / 0.18);
+  background: oklch(0.13 0.005 60 / 0.4);
+  padding: 0.75rem;
+  text-align: center;
+  transition: transform 0.2s, background 0.2s;
+}
+.hero-stat:hover { transform: translateY(-3px); background: oklch(0.18 0.006 60 / 0.6); }
+.hero-stat-num {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  background: linear-gradient(135deg, oklch(0.92 0.09 88), oklch(0.62 0.13 70));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero-stat-label { font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.2em; color: oklch(0.65 0.012 80); }
+
+.hero-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 0.75rem;
+  background: oklch(0.13 0.005 60 / 0.4);
+  padding: 0.75rem;
+}
+.hero-pulse-dot {
+  width: 0.75rem; height: 0.75rem;
+  border-radius: 50%;
+  background: oklch(0.82 0.13 85);
+  flex-shrink: 0;
+  position: relative;
+}
+.hero-pulse-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: oklch(0.82 0.13 85);
+  animation: livePing 2s ease-out infinite;
+}
+.hero-pulse-text { font-size: 0.75rem; color: oklch(0.65 0.012 80); flex: 1; }
+.hero-pulse-gold { color: oklch(0.82 0.13 85); font-weight: 500; }
+.hero-live-badge { font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.2em; color: oklch(0.82 0.13 85 / 0.6); }
+
+/* Scroll indicator */
+.scroll-indicator {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.scroll-label { font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.3em; color: oklch(0.65 0.012 80 / 0.4); }
+.scroll-line {
+  width: 1px;
+  height: 3rem;
+  background: linear-gradient(to bottom, oklch(0.82 0.13 85 / 0.5), transparent);
+  animation: scrollPulse 2.2s ease-in-out infinite;
+  transform-origin: top;
+}
+@keyframes scrollPulse {
+  0%,100% { transform: scaleY(0.3); opacity: 0.4; }
+  50%      { transform: scaleY(1);   opacity: 1; }
+}
+
+/* Marquee – pure CSS, no JS */
+.marquee-wrap {
+  overflow: hidden;
+  border-top: 1px solid oklch(0.82 0.13 85 / 0.12);
+  border-bottom: 1px solid oklch(0.82 0.13 85 / 0.12);
+  padding: 1rem 0;
+}
+.marquee-track {
+  display: flex;
+  gap: 3rem;
+  width: max-content;
+  animation: marquee 28s linear infinite;
+  will-change: transform;
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.marquee-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4em;
+  color: oklch(0.65 0.012 80 / 0.5);
+  white-space: nowrap;
+}
+.marquee-dot { width: 0.25rem; height: 0.25rem; border-radius: 50%; background: oklch(0.82 0.13 85 / 0.4); flex-shrink: 0; }
+
+/* Stats */
+.stats-section { padding: 5rem 1.5rem; }
+.stats-grid {
+  margin: 0 auto;
+  max-width: 80rem;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  border-radius: 1.25rem;
+  overflow: hidden;
+  gap: 1px;
+  background: oklch(0.28 0.012 80 / 0.3);
+}
+@media (min-width: 768px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
+.stat-card {
+  background: oklch(0.17 0.006 60 / 0.3);
+  padding: 2rem;
+  text-align: center;
+  transition: background 0.25s;
+}
+.stat-card:hover { background: oklch(0.82 0.13 85 / 0.05); }
+.stat-icon { width: 1.25rem; height: 1.25rem; color: oklch(0.82 0.13 85 / 0.4); margin: 0 auto 0.75rem; transition: color 0.25s; }
+.stat-card:hover .stat-icon { color: oklch(0.82 0.13 85); }
+.stat-value {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  background: linear-gradient(135deg, oklch(0.92 0.09 88) 0%, oklch(0.82 0.13 85) 50%, oklch(0.62 0.13 70) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.stat-label { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.25em; color: oklch(0.65 0.012 80); margin-top: 0.25rem; }
+
+/* Features */
+.features-section { position: relative; padding: 6rem 1.5rem; overflow: hidden; }
+.features-inner { margin: 0 auto; max-width: 80rem; }
+.features-header { max-width: 36rem; margin-bottom: 4rem; }
+.section-tag { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.3em; color: oklch(0.82 0.13 85); margin-bottom: 0.75rem; }
+.section-title { font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3.75rem); line-height: 1.1; margin: 0 0 1rem; }
+.section-body { font-size: 0.9375rem; color: oklch(0.65 0.012 80); max-width: 32rem; }
+.features-grid { display: grid; gap: 1.25rem; }
+@media (min-width: 768px) { .features-grid { grid-template-columns: repeat(3, 1fr); } }
+
+/* Feature card – CSS tilt via perspective, no JS listener per card */
+.feature-card {
+  border-radius: 1.5rem;
+  background: linear-gradient(180deg, oklch(1 0 0 / 0.04), oklch(1 0 0 / 0.01));
+  backdrop-filter: blur(18px);
+  border: 1px solid oklch(1 0 0 / 0.06);
+  padding: 2rem;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+  transition: box-shadow 0.5s, transform 0.3s;
+  will-change: transform;
+}
+.feature-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, oklch(0.82 0.13 85 / 0.05), transparent 50%, oklch(0.82 0.13 85 / 0.03));
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+.feature-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 0 0 1px oklch(0.82 0.13 85 / 0.2), 0 20px 60px -20px oklch(0.82 0.13 85 / 0.35);
+}
+.feature-card:hover::before { opacity: 1; }
+.feature-icon-wrap {
+  width: 3rem; height: 3rem;
+  border-radius: 1rem;
+  background: oklch(0.82 0.13 85 / 0.1);
+  display: grid;
+  place-items: center;
+  margin-bottom: 1.5rem;
+  transition: transform 0.3s, background 0.3s;
+}
+.feature-card:hover .feature-icon-wrap { transform: scale(1.1) rotate(4deg); background: oklch(0.82 0.13 85 / 0.18); }
+.feature-icon { width: 1.5rem; height: 1.5rem; color: oklch(0.82 0.13 85); }
+.feature-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  margin: 0 0 0.75rem;
+  transition: background 0.5s, -webkit-background-clip 0.5s;
+}
+.feature-card:hover .feature-title {
+  background: linear-gradient(135deg, oklch(0.92 0.09 88), oklch(0.62 0.13 70));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.feature-body { font-size: 0.875rem; line-height: 1.65; color: oklch(0.65 0.012 80); }
+
+/* Tonight */
+.tonight-section { padding: 4rem 1.5rem 6rem; }
+.tonight-inner { margin: 0 auto; max-width: 80rem; }
+.tonight-card {
+  border-radius: 1.5rem;
+  border: 1px solid oklch(0.82 0.13 85 / 0.15);
+  background: linear-gradient(135deg, oklch(0.18 0.012 80 / 0.8), oklch(0.14 0.01 70 / 0.9), oklch(0.18 0.015 85 / 0.8));
+  box-shadow: 0 0 80px oklch(0.82 0.13 85 / 0.08), inset 0 0 80px oklch(0.13 0.005 60 / 0.5);
+  padding: 5rem 2rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.tonight-bg {
+  position: absolute;
+  inset: 0;
+  opacity: 0.028;
+  background-image: radial-gradient(circle, oklch(0.82 0.13 85) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+}
+.tonight-title { font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3.5rem); margin: 0.5rem 0 1rem; }
+.tonight-body { font-size: 0.9375rem; color: oklch(0.65 0.012 80); max-width: 32rem; margin: 0 auto 2.5rem; }
+.tonight-ctas { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; }
+
+/* Footer */
+.site-footer {
+  border-top: 1px solid oklch(0.82 0.13 85 / 0.18);
+  padding: 3rem 1.5rem;
+  position: relative;
+}
+.site-footer::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, oklch(0.82 0.13 85 / 0.4), transparent);
+}
+.footer-inner {
+  margin: 0 auto;
+  max-width: 80rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+@media (min-width: 768px) { .footer-inner { flex-direction: row; justify-content: space-between; } }
+.footer-copy { font-size: 0.75rem; color: oklch(0.65 0.012 80); text-align: center; }
+.footer-links { display: flex; gap: 1rem; }
+.footer-link { font-size: 0.75rem; color: oklch(0.65 0.012 80 / 0.4); text-decoration: none; transition: color 0.2s; }
+.footer-link:hover { color: oklch(0.82 0.13 85); }
+`;
