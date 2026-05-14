@@ -50,7 +50,6 @@ function MenuPage() {
   const dishesQuery = useQuery({
     queryKey: ["dishes"],
     queryFn: fetchDishes,
-    enabled: !!tableQuery.data,
   });
 
   const [active, setActive] = useState<"all" | Category>("all");
@@ -67,6 +66,7 @@ function MenuPage() {
   useEffect(() => { if (t) sessionStorage.setItem("auralis-token", t); }, [t]);
 
   const table = tableQuery.data;
+  const previewMode = !t;
   const filtered = useMemo(() => {
     const list = dishesQuery.data ?? [];
     const visible = list.filter((d) => d.available && (table?.is_vip || !d.isVipOnly));
@@ -77,32 +77,33 @@ function MenuPage() {
   const totals = calcTotals(cart);
 
   // ---- Gating screens ----
-  if (!t) return <ScanRequired />;
-  if (tableQuery.isLoading) return <Loading />;
-  if (!table || !table.active) return <ScanRequired invalid />;
+  if (t && tableQuery.isLoading) return <Loading />;
+  if (t && (!table || !table.active)) return <ScanRequired invalid />;
 
   return (
     <div className="relative min-h-screen pb-32">
-      <motion.div
-        initial={{ opacity: 1 }}
-        animate={{ opacity: welcome ? 1 : 0, pointerEvents: welcome ? "auto" : "none" }}
-        transition={{ duration: 0.5 }}
-        className="fixed inset-0 z-[60] flex items-center justify-center bg-background"
-      >
-        <div className="text-center">
-          <div className="text-[11px] uppercase tracking-[0.4em] text-gold">Welcome</div>
-          <h1 className="mt-3 font-display text-5xl gold-text">{table.name}</h1>
-          {table.is_vip && <div className="mt-2 text-[10px] uppercase tracking-[0.4em] text-gold-soft">VIP Service</div>}
-          <div className="mx-auto mt-6 h-px w-32 bg-gradient-to-r from-transparent via-gold to-transparent" />
-        </div>
-      </motion.div>
+      {!previewMode && table && (
+        <motion.div
+          initial={{ opacity: 1 }}
+          animate={{ opacity: welcome ? 1 : 0, pointerEvents: welcome ? "auto" : "none" }}
+          transition={{ duration: 0.5 }}
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-background"
+        >
+          <div className="text-center">
+            <div className="text-[11px] uppercase tracking-[0.4em] text-gold">Welcome</div>
+            <h1 className="mt-3 font-display text-5xl gold-text">{table.name}</h1>
+            {table.is_vip && <div className="mt-2 text-[10px] uppercase tracking-[0.4em] text-gold-soft">VIP Service</div>}
+            <div className="mx-auto mt-6 h-px w-32 bg-gradient-to-r from-transparent via-gold to-transparent" />
+          </div>
+        </motion.div>
+      )}
 
       <header className="sticky top-0 z-30 border-b hairline glass-strong">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:px-6">
           <Logo />
           <div className="text-right">
-            <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Now serving</div>
-            <div className="font-display gold-text">{table.name}</div>
+            <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">{previewMode ? "Preview" : "Now serving"}</div>
+            <div className="font-display gold-text">{previewMode ? "Browse Mode" : table?.name}</div>
           </div>
         </div>
         <nav className="border-t hairline">
@@ -147,7 +148,7 @@ function MenuPage() {
         )}
       </section>
 
-      {totalQty > 0 && (
+      {!previewMode && totalQty > 0 && (
         <button
           onClick={() => setCartOpen(true)}
           className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 sm:bottom-8"
@@ -161,8 +162,8 @@ function MenuPage() {
         </button>
       )}
 
-      <OrderModal dish={selected} onClose={() => setSelected(null)} />
-      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} table={table} />
+      <OrderModal dish={previewMode ? null : selected} onClose={() => setSelected(null)} />
+      {table && <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} table={table} />}
     </div>
   );
 }
