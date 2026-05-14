@@ -53,8 +53,11 @@ function Landing() {
             </motion.p>
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.45 }}
               className="mt-10 flex flex-wrap items-center gap-3">
-              <Link to="/reserve" className="inline-flex items-center gap-3 rounded-full bg-gold px-7 py-4 text-sm font-semibold uppercase tracking-[0.2em] text-primary-foreground hover:bg-gold-soft">
-                Reserve a Table <ArrowRight className="h-4 w-4" />
+              <Link to="/menu" className="inline-flex items-center gap-3 rounded-full bg-gold px-7 py-4 text-sm font-semibold uppercase tracking-[0.2em] text-primary-foreground hover:bg-gold-soft">
+                Explore Menu <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link to="/reserve" className="inline-flex items-center gap-2 rounded-full border hairline px-7 py-4 text-sm font-medium hover:bg-secondary">
+                Reserve a Table
               </Link>
               <Link to="/login" className="inline-flex items-center gap-2 rounded-full border hairline px-7 py-4 text-sm font-medium hover:bg-secondary">
                 Staff Portal
