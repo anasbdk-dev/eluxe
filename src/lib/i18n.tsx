@@ -46,7 +46,7 @@ const en: Dict = {
   "landing.returning": "Returning",
   "landing.michelin": "Michelin",
   "landing.experienceTag": "The Experience",
-  "landing.experienceTitle": "An ecosystem, end to end.",
+  "landing.experienceTitle": "end to end ecosystem.",
   "landing.qrTitle": "Smart QR Tables",
   "landing.qrBody": "Each table has its own QR. One scan opens the menu — table identity flows automatically into every order.",
   "landing.kitchenTitle": "Live Kitchen Display",
