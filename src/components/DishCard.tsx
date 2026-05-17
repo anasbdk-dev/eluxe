@@ -27,7 +27,10 @@ export function DishCard({ dish, onSelect, index = 0 }: Props) {
           alt={dish.name}
           loading="lazy"
           decoding="async"
+          width={640}
+          height={480}
           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 motion-reduce:transition-none"
+          style={{ contentVisibility: "auto" }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
         {dish.badges.length > 0 && (
