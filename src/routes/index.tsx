@@ -395,32 +395,33 @@ const CSS = `
   --my: 50vh;
 }
 
-/* Cursor glow – driven by CSS vars set via onMouseMove, NO animation frame */
+/* Cursor glow – GPU-only transform, no layout thrash */
 .cursor-glow {
   position: fixed;
   pointer-events: none;
   z-index: 100;
   width: 420px;
   height: 420px;
+  left: 0; top: 0;
   border-radius: 50%;
   background: radial-gradient(circle, oklch(0.82 0.13 85 / 0.055), transparent 70%);
   mix-blend-mode: screen;
-  left: calc(var(--mx) - 210px);
-  top: calc(var(--my) - 210px);
-  /* transform driven by CSS, no JS rAF */
-  will-change: left, top;
-  transition: left 0.12s linear, top 0.12s linear;
+  transform: translate3d(calc(var(--mx) - 210px), calc(var(--my) - 210px), 0);
+  will-change: transform;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  contain: layout paint size;
 }
 
-/* Glow orb – CSS keyframe, GPU composited */
+/* Glow orb – GPU composited, lighter blur */
 .glow-orb {
   position: absolute;
   border-radius: 50%;
   background: radial-gradient(circle, oklch(0.82 0.13 85 / 0.11), oklch(0.62 0.13 70 / 0.04), transparent 70%);
-  filter: blur(60px);
+  filter: blur(40px);
   will-change: transform, opacity;
-  animation: orbPulse 7s ease-in-out infinite;
+  animation: orbPulse 9s ease-in-out infinite;
   pointer-events: none;
+  contain: layout paint size;
 }
 @keyframes orbPulse {
   0%,100% { transform: scale(1); opacity: 0.6; }

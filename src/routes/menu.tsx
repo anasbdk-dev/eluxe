@@ -46,11 +46,16 @@ function MenuPage() {
     queryKey: ["table", token],
     queryFn: () => fetchTableByToken(token!),
     enabled: !!token,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
   });
 
   const dishesQuery = useQuery({
     queryKey: ["dishes"],
     queryFn: fetchDishes,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 
   const [active, setActive] = useState<"all" | Category>("all");
