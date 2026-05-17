@@ -176,14 +176,23 @@
 
 @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
 
+/* Perf: virtualize offscreen cards — browser skips layout/paint for them */
+.dish-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 480px;
+  contain: layout paint style;
+}
+
 /* Perf: reduce expensive effects on small / touch devices */
 @media (max-width: 768px), (pointer: coarse) {
   .cursor-glow { display: none !important; }
-  .glow-orb { filter: blur(28px) !important; animation-duration: 12s !important; }
+  .glow-orb { filter: blur(24px) !important; animation: none !important; opacity: 0.55 !important; }
   .glass, .glass-strong {
-    backdrop-filter: blur(10px) saturate(120%) !important;
-    -webkit-backdrop-filter: blur(10px) saturate(120%) !important;
+    backdrop-filter: blur(8px) saturate(115%) !important;
+    -webkit-backdrop-filter: blur(8px) saturate(115%) !important;
   }
+  /* Disable expensive hover transforms on touch */
+  .group:hover .group-hover\:scale-105 { transform: none !important; }
 }
 
 /* Respect users who prefer reduced motion */
