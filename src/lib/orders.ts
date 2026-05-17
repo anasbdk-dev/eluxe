@@ -69,7 +69,6 @@ export const placeOrderSecure = createServerFn({ method: "POST" })
       if (!dish) throw new Error(`Dish ${item.dish_id} not found`);
       if (!dish.available) throw new Error(`Dish is no longer available`);
       if (dish.is_vip_only && !table.is_vip) {
-        // Note: table doesn't have is_vip here — adjust query above if needed
         throw new Error("VIP item not available for this table");
       }
       recalculatedSubtotal += Number(dish.price) * item.qty;
