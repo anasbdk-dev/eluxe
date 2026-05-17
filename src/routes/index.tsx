@@ -152,11 +152,20 @@ export default function Landing() {
   const heroOpacity = useTransform(scrollYProgress, [0, 0.65], [1, 0]);
   const heroScale = useTransform(scrollYProgress, [0, 0.65], [1, 0.94]);
 
+  const rafPending = useRef(false);
+  const lastPos = useRef({ x: 0, y: 0 });
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
+      lastPos.current.x = e.clientX;
+      lastPos.current.y = e.clientY;
+      if (rafPending.current) return;
+      rafPending.current = true;
       const el = e.currentTarget;
-      el.style.setProperty("--mx", `${e.clientX}px`);
-      el.style.setProperty("--my", `${e.clientY}px`);
+      requestAnimationFrame(() => {
+        el.style.setProperty("--mx", `${lastPos.current.x}px`);
+        el.style.setProperty("--my", `${lastPos.current.y}px`);
+        rafPending.current = false;
+      });
     },
     [],
   );
