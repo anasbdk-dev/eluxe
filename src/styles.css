@@ -173,3 +173,25 @@
   background-size: 200% 100%;
   animation: shimmer 2.5s infinite;
 }
+
+@keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
+
+/* Perf: reduce expensive effects on small / touch devices */
+@media (max-width: 768px), (pointer: coarse) {
+  .cursor-glow { display: none !important; }
+  .glow-orb { filter: blur(28px) !important; animation-duration: 12s !important; }
+  .glass, .glass-strong {
+    backdrop-filter: blur(10px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(10px) saturate(120%) !important;
+  }
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
