@@ -30,13 +30,15 @@ const placeOrderSchema = z.object({
   notes: z.string().max(500).optional(),
 });
 
+type PlaceOrderInput = z.infer<typeof placeOrderSchema>;
+
 export const placeOrderSecure = createServerFn({ method: "POST" })
-  .validator((data: unknown) => placeOrderSchema.parse(data))
-  .handler(async ({ data }) => {
+  .inputValidator((data: unknown) => placeOrderSchema.parse(data))
+  .handler(async ({ data }: { data: PlaceOrderInput }) => {
     // 1. Verify table exists and is active
     const { data: table, error: tableError } = await supabase
       .from("tables")
-      .select("id, name, active, qr_token")
+      .select("id, name, active, qr_token, is_vip")
       .eq("id", data.table_id)
       .eq("qr_token", data.qr_token)
       .eq("active", true)
