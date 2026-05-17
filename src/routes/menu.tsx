@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { ShoppingBag, QrCode } from "lucide-react";
 import { fallback, zodValidator } from "@tanstack/zod-adapter";
@@ -82,12 +81,10 @@ function MenuPage() {
 
   return (
     <div className="relative min-h-screen pb-32">
-      {!previewMode && table && (
-        <motion.div
-          initial={{ opacity: 1 }}
-          animate={{ opacity: welcome ? 1 : 0, pointerEvents: welcome ? "auto" : "none" }}
-          transition={{ duration: 0.5 }}
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-background"
+      {!previewMode && table && welcome && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-background animate-fade-in motion-reduce:animate-none"
+          style={{ animation: "fadeOut 0.5s ease 1.3s forwards" }}
         >
           <div className="text-center">
             <div className="text-[11px] uppercase tracking-[0.4em] text-gold">{t("menu.welcome")}</div>
@@ -95,7 +92,7 @@ function MenuPage() {
             {table.is_vip && <div className="mt-2 text-[10px] uppercase tracking-[0.4em] text-gold-soft">{t("menu.vipService")}</div>}
             <div className="mx-auto mt-6 h-px w-32 bg-gradient-to-r from-transparent via-gold to-transparent" />
           </div>
-        </motion.div>
+        </div>
       )}
 
       <header className="sticky top-0 z-30 border-b hairline glass-strong">

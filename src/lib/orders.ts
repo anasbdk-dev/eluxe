@@ -30,13 +30,15 @@ const placeOrderSchema = z.object({
   notes: z.string().max(500).optional(),
 });
 
+type PlaceOrderInput = z.infer<typeof placeOrderSchema>;
+
 export const placeOrderSecure = createServerFn({ method: "POST" })
-  .validator((data: unknown) => placeOrderSchema.parse(data))
-  .handler(async ({ data }) => {
+  .inputValidator((data: unknown) => placeOrderSchema.parse(data))
+  .handler(async ({ data }: { data: PlaceOrderInput }) => {
     // 1. Verify table exists and is active
     const { data: table, error: tableError } = await supabase
       .from("tables")
-      .select("id, name, active, qr_token")
+      .select("id, name, active, qr_token, is_vip")
       .eq("id", data.table_id)
       .eq("qr_token", data.qr_token)
       .eq("active", true)
@@ -67,7 +69,6 @@ export const placeOrderSecure = createServerFn({ method: "POST" })
       if (!dish) throw new Error(`Dish ${item.dish_id} not found`);
       if (!dish.available) throw new Error(`Dish is no longer available`);
       if (dish.is_vip_only && !table.is_vip) {
-        // Note: table doesn't have is_vip here — adjust query above if needed
         throw new Error("VIP item not available for this table");
       }
       recalculatedSubtotal += Number(dish.price) * item.qty;

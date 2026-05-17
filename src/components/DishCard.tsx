@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import { Flame, Clock } from "lucide-react";
 import type { Dish } from "@/lib/types";
 import { BadgePill } from "./BadgePill";
@@ -13,14 +12,13 @@ interface Props {
 
 export function DishCard({ dish, onSelect, index = 0 }: Props) {
   const { t } = useT();
+  // Cheap CSS fade-in, capped delay; no framer-motion per card.
+  const delay = `${Math.min(index * 30, 240)}ms`;
   return (
-    <motion.button
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: Math.min(index * 0.04, 0.3), ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -4 }}
+    <button
       onClick={() => onSelect(dish)}
-      className="group relative overflow-hidden rounded-2xl text-left glass hover:gold-glow transition-shadow duration-500 disabled:opacity-50"
+      style={{ animationDelay: delay }}
+      className="dish-card group relative overflow-hidden rounded-2xl text-left glass hover:gold-glow transition-shadow duration-500 disabled:opacity-50 animate-fade-in motion-reduce:animate-none"
       disabled={!dish.available}
     >
       <div className="relative aspect-[4/3] overflow-hidden">
@@ -28,7 +26,8 @@ export function DishCard({ dish, onSelect, index = 0 }: Props) {
           src={dish.image}
           alt={dish.name}
           loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-[1200ms] group-hover:scale-110"
+          decoding="async"
+          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 motion-reduce:transition-none"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
         {dish.badges.length > 0 && (
@@ -57,6 +56,6 @@ export function DishCard({ dish, onSelect, index = 0 }: Props) {
           )}
         </div>
       </div>
-    </motion.button>
+    </button>
   );
 }
